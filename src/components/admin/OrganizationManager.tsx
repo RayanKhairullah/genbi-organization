@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, Fragment, useMemo } from 'react'
-import { supabase, type StrukturJabatan, type Pengurus } from '@/lib/supabase'
+import { useState, Fragment, useMemo, useEffect } from 'react'
+import { supabase, MEDIA_BUCKET, type StrukturJabatan, type Pengurus } from '@/lib/supabase'
 import { compressImageToWebP } from '@/lib/image-utils'
-import { Plus, Edit, Trash2, User, Users, Briefcase, UploadCloud, X, Save, ChevronsUpDown } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Briefcase, Save, ChevronsUpDown } from 'lucide-react'
 import { AdminLogo } from '@/components/admin/AdminLogo'
 import { Dialog, Transition } from '@headlessui/react'
+import Image from "next/image"
 
 interface OrganizationManagerProps {
   pengurus: Pengurus[]
@@ -20,8 +21,8 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [selectedImageFiles, setSelectedImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [selectedPeriode, setSelectedPeriode] = useState<string>('all')
 
   const defaultPeriode = new Date().getFullYear().toString()
@@ -38,11 +39,32 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     jabatan_id: '',
     periode: defaultPeriode,
     role_type: 'administrator' as 'administrator' | 'member',
+    // UI-only helpers for division name composition
+    ketua_divisi: '',
+    anggota_divisi: '',
+  }
+
+  const uploadManyImages = async (files: File[]): Promise<string[]> => {
+    const urls: string[] = []
+    for (const f of files) {
+      const url = await uploadImageToSupabase(f)
+      if (!url) throw new Error('Gagal mengupload salah satu gambar')
+      urls.push(url)
+    }
+    return urls
   }
 
   const initialStrukturForm = {
     nama_jabatan: '',
     urutan: '',
+  }
+
+  // Helper type for division image fields when editing existing Pengurus
+  type PengurusWithImages = Pengurus & {
+    id: number
+    image_url_1?: string | null
+    image_url_2?: string | null
+    image_url_3?: string | null
   }
 
   const [pengurusForm, setPengurusForm] = useState(initialPengurusForm)
@@ -76,7 +98,7 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
 
   const filteredStruktur = useMemo(() => {
     const q = searchStruktur.trim().toLowerCase()
-    let list = [...strukturJabatan]
+    const list = [...strukturJabatan]
     if (!q) return list
     return list.filter(s => (s.nama_jabatan || '').toLowerCase().includes(q))
   }, [strukturJabatan, searchStruktur])
@@ -85,9 +107,9 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     setPengurusForm(initialPengurusForm)
     setStrukturForm(initialStrukturForm)
     setEditingItem(null)
-    setSelectedImageFile(null)
-    setImagePreview(null)
     setUploadingImage(false)
+    setSelectedImageFiles([])
+    setImagePreviews([])
   }
 
   const openModal = (item: Pengurus | StrukturJabatan | null = null) => {
@@ -107,10 +129,45 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
           instagram: item.instagram || '',
           image_url: item.image_url || '',
           role_type: (item.role_type as 'administrator' | 'member') || 'administrator',
+          // attempt to prefill division helpers from existing nama text if matches pattern
+          ketua_divisi: (() => {
+            const m = /ketua\s*divisi\s*:\s*(.*?)\s*anggota\s*:/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
+          anggota_divisi: (() => {
+            const m = /anggota\s*:\s*(.*)$/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
         })
-        if (item.image_url) setImagePreview(item.image_url)
+        // Determine if this pengurus is a division entry (uses multi-image fields)
+        const sj = strukturJabatan.find(j => j.id === item.jabatan_id)
+        const isDivision = (sj?.nama_jabatan || '').toLowerCase().startsWith('divisi') || (sj?.nama_jabatan || '').toLowerCase().startsWith('devisi')
+        if (isDivision) {
+          // Populate previews from image_url_1..3 if present
+          const existing = item as PengurusWithImages
+          const urls = [
+            existing.image_url_1,
+            existing.image_url_2,
+            existing.image_url_3,
+          ].filter(Boolean) as string[]
+          setImagePreviews(urls)
+          setSelectedImageFiles([])
+        } else {
+          // Clear multi-image when editing single record
+          setSelectedImageFiles([])
+          setImagePreviews([])
+        }
       } else { // Struktur
         setStrukturForm({ ...initialStrukturForm, ...item, urutan: item.urutan.toString() })
+      }
+    } else {
+      // Default values when adding a new Pengurus
+      if (activeTab === 'pengurus' && strukturJabatan.length > 0) {
+        const first = strukturJabatan[0]
+        setPengurusForm((prev) => ({
+          ...prev,
+          jabatan_id: String(first.id),
+        }))
       }
     }
     setIsModalOpen(true)
@@ -121,15 +178,29 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     setTimeout(resetForms, 300) // Delay reset for transition
   }
 
+  // Reset upload states when jabatan changes to ensure default inputs appear when placeholder is selected
+  useEffect(() => {
+    const selected = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+    const name = (selected?.nama_jabatan || '').toLowerCase()
+    const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+    if (!isDivision) {
+      // Default/core mode: use single upload, clear multi selections
+      setSelectedImageFiles([])
+      setImagePreviews([])
+    }
+  }, [pengurusForm.jabatan_id, strukturJabatan])
+
   const uploadImageToSupabase = async (file: File): Promise<string | null> => {
     try {
       setUploadingImage(true)
       const compressedFile = await compressImageToWebP(file, 0.8)
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webp`
       const filePath = `pengurus/${fileName}`
-      const { error } = await supabase.storage.from('pik-r-bukti').upload(filePath, compressedFile)
+      const { error } = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .upload(filePath, compressedFile, { contentType: 'image/webp', upsert: false })
       if (error) throw new Error(error.message)
-      const { data: { publicUrl } } = supabase.storage.from('pik-r-bukti').getPublicUrl(filePath)
+      const { data: { publicUrl } } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(filePath)
       return publicUrl
     } catch (error) {
       console.error('Error uploading image:', error)
@@ -148,22 +219,80 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
 
     try {
       if (activeTab === 'pengurus') {
-        let imageUrl = editingItem && 'image_url' in editingItem ? editingItem.image_url : ''
-        if (selectedImageFile) {
-          const uploadedUrl = await uploadImageToSupabase(selectedImageFile)
-          if (!uploadedUrl) throw new Error('Gagal mengupload gambar')
-          imageUrl = uploadedUrl
-        }
+        const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+        const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
+        const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
 
-        const { nama, jabatan_id, periode } = pengurusForm
-        if (!nama?.trim() || !jabatan_id || !periode?.trim()) {
+        // For non-division roles, we no longer handle single-image uploads or image_url column
+
+        const { nama, jabatan_id, periode, ketua_divisi, anggota_divisi } = pengurusForm
+        const nameInput = (nama || '').trim()
+        const derivedName = (!isDivision)
+          ? (nameInput || (!editingItem ? (selectedJabatan?.nama_jabatan || 'Pengurus').trim() : ''))
+          : (() => {
+              // Compose: Ketua Divisi : <ketua> Anggota : <anggota1     anggota2 ...>
+              const ketua = (ketua_divisi || '').trim()
+              // split anggota by newlines or commas, trim, remove empties
+              const anggotaTokens = (anggota_divisi || '')
+                .split(/\n|,/)
+                .map(s => s.trim())
+                .filter(Boolean)
+              const anggotaJoined = anggotaTokens.join('     ')
+              const composed = [
+                ketua ? `Ketua Divisi : ${ketua}` : '',
+                anggotaJoined ? `Anggota : ${anggotaJoined}` : ''
+              ].filter(Boolean).join(' ')
+              // IMPORTANT: For divisions, always use composed text; DO NOT take value from 'Nama Lengkap'
+              return (composed || (selectedJabatan?.nama_jabatan || 'Divisi').trim())
+            })()
+        if (!jabatan_id || !(periode || '').trim() || !derivedName) {
           throw new Error('Nama, Jabatan, dan Periode wajib diisi.')
         }
-        const payload = { ...pengurusForm, image_url: imageUrl, jabatan_id: parseInt(jabatan_id) }
-        const { error } = editingItem
-          ? await supabase.from('pengurus').update(payload).eq('id', editingItem.id)
-          : await supabase.from('pengurus').insert(payload)
-        if (error) throw new Error(error.message)
+        // Build a minimal payload to avoid sending columns that will be removed
+        const payloadCommon = {
+          jabatan_id: parseInt(jabatan_id),
+          periode: (pengurusForm.periode || '').trim(),
+          role_type: pengurusForm.role_type,
+        }
+
+        if (isDivision) {
+          // Single row with up to 3 images
+          if (selectedImageFiles.length === 0 && !editingItem) throw new Error('Pilih minimal 1 gambar untuk divisi')
+          if (selectedImageFiles.length > 3) throw new Error('Maksimal 3 gambar untuk divisi')
+          let urls: string[] = []
+          if (selectedImageFiles.length) {
+            urls = await uploadManyImages(selectedImageFiles)
+          } else if (editingItem) {
+            const existing = editingItem as PengurusWithImages
+            urls = [
+              existing.image_url_1,
+              existing.image_url_2,
+              existing.image_url_3,
+            ].filter(Boolean) as string[]
+          }
+          const payload = {
+            ...payloadCommon,
+            // ensure NOT NULL nama (use input or fallback already in derivedName)
+            nama: derivedName,
+            image_url_1: urls[0] || null,
+            image_url_2: urls[1] || null,
+            image_url_3: urls[2] || null,
+          }
+          const { error } = editingItem
+            ? await supabase.from('pengurus').update(payload).eq('id', (editingItem as PengurusWithImages).id)
+            : await supabase.from('pengurus').insert(payload)
+          if (error) throw new Error(error.message)
+        } else {
+          // Core and other non-division roles: no image uploaded and no image_url column
+          const payload = {
+            ...payloadCommon,
+            nama: derivedName,
+          }
+          const { error } = editingItem
+            ? await supabase.from('pengurus').update(payload).eq('id', editingItem.id)
+            : await supabase.from('pengurus').insert(payload)
+          if (error) throw new Error(error.message)
+        }
       } else {
         const { nama_jabatan, urutan } = strukturForm
         if (!nama_jabatan?.trim() || !urutan?.trim()) {
@@ -208,22 +337,21 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     }
   }
 
-  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        setMessage({ type: 'error', text: 'File harus berupa gambar!' })
-        return
-      }
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setMessage({ type: 'error', text: 'Ukuran file maksimal 5MB!' })
-        return
-      }
-      setSelectedImageFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => setImagePreview(e.target?.result as string)
-      reader.readAsDataURL(file)
+  // Single-image upload removed for core roles; division uses multi-upload via handleDivisionFilesSelect
+
+  const handleDivisionFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    const images = files.filter(f => f.type.startsWith('image/')).slice(0, 3)
+    const tooBig = images.find(f => f.size > 5 * 1024 * 1024)
+    if (tooBig) {
+      setMessage({ type: 'error', text: 'Setiap gambar maksimal 5MB!' })
+      return
     }
+    setSelectedImageFiles(images)
+    // previews
+    Promise.all(images.map(f => new Promise<string>((res) => { const r = new FileReader(); r.onload = ev => res(ev.target?.result as string); r.readAsDataURL(f) })))
+      .then(setImagePreviews)
   }
 
   const renderTabs = () => (
@@ -250,7 +378,8 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
             <ChevronsUpDown className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
           <div className="relative">
-            <select value={selectedRoleType} onChange={e => setSelectedRoleType(e.target.value as any)} className="appearance-none w-full sm:w-auto bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={selectedRoleType} onChange={e => setSelectedRoleType(e.target.value as 'all' | 'administrator' | 'member')}
+              className="appearance-none w-full sm:w-auto bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="all">Semua Tipe</option>
               <option value="administrator">Administrator</option>
               <option value="member">Member</option>
@@ -285,7 +414,13 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
-                      <img className="h-10 w-10 rounded-full object-cover" src={p.image_url || `https://ui-avatars.com/api/?name=${p.nama}&background=random`} alt={p.nama} />
+                    <Image
+                      src={p.image_url || `https://ui-avatars.com/api/?name=${p.nama}&background=random`}
+                      alt={p.nama}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">{p.nama}</div>
@@ -364,10 +499,38 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                   {activeTab === 'pengurus' ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Lengkap</label>
-                          <input type="text" value={pengurusForm.nama} onChange={e => setPengurusForm({...pengurusForm, nama: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required />
-                        </div>
+                        {(() => {
+                          const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+                          const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
+                          const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+                          if (isDivision) {
+                            return (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama (otomatis)</label>
+                                <input
+                                  type="text"
+                                  value={`Ketua Divisi : ${pengurusForm.ketua_divisi || ''}${pengurusForm.ketua_divisi && pengurusForm.anggota_divisi ? ' ' : ''}${pengurusForm.anggota_divisi ? `Anggota : ${pengurusForm.anggota_divisi}` : ''}`}
+                                  readOnly
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700/60 dark:border-gray-600 text-gray-600 dark:text-gray-300"
+                                />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Nama akan disimpan dari isian Ketua Divisi dan Anggota.</p>
+                              </div>
+                            )
+                          }
+                          return (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Lengkap</label>
+                              <input
+                                type="text"
+                                value={pengurusForm.nama}
+                                onChange={e => setPengurusForm({ ...pengurusForm, nama: e.target.value })}
+                                className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                required
+                                placeholder="Contoh: Nama Lengkap"
+                              />
+                            </div>
+                          )
+                        })()}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Jabatan</label>
                           <select value={pengurusForm.jabatan_id} onChange={e => setPengurusForm({...pengurusForm, jabatan_id: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required>
@@ -386,23 +549,78 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                             <option value="member">Member (Tidak ditampilkan)</option>
                           </select>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram (opsional)</label>
-                          <input type="text" value={pengurusForm.instagram} onChange={e => setPengurusForm({...pengurusForm, instagram: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
+                        {/* Instagram hidden for core roles and divisions */}
+                        {(() => {
+                          const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+                          const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
+                          const coreNames = new Set(['kepala sekolah','wakil ketua umum','sekretaris','bendahara','ketua umum','pembina','pengelola'])
+                          const isCoreRole = coreNames.has(name)
+                          const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+                          return (!isCoreRole && !isDivision) ? (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram (opsional)</label>
+                              <input type="text" value={pengurusForm.instagram} onChange={e => setPengurusForm({...pengurusForm, instagram: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
+                            </div>
+                          ) : null
+                        })()}
+                        {/* Division-specific name helpers */}
+                        {(() => {
+                          const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+                          const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
+                          const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+                          if (!isDivision) return null
+                          return (
+                            <>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ketua Divisi</label>
+                                <input
+                                  type="text"
+                                  value={pengurusForm.ketua_divisi}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, ketua_divisi: e.target.value })}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder="Contoh: Vania Raisya Madhani"
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Anggota</label>
+                                <textarea
+                                  value={pengurusForm.anggota_divisi}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, anggota_divisi: e.target.value })}
+                                  rows={3}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder={"Pisahkan dengan koma atau baris baru.\nContoh:\nAnisa Trimulyani, Alfis Asmadi, Stellina Ratisah Azzahra, Indah Aqila Dwianti"}
+                                />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Hasil akan disimpan sebagai: &quot;Ketua Divisi : [ketua] Anggota : [anggota dipisah spasi]&quot;</p>
+                              </div>
+                            </>
+                          )
+                        })()}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto Pengurus</label>
-                        <div className="mt-1 flex items-center space-x-4">
-                          <div className="flex-shrink-0 h-24 w-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                            {imagePreview ? <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-12 w-12 text-gray-400" />}
-                          </div>
-                          <label htmlFor="file-upload" className="relative cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <span>{uploadingImage ? 'Mengupload...' : 'Pilih Gambar'}</span>
-                            <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageFileSelect} accept="image/*" disabled={uploadingImage} />
-                          </label>
-                        </div>
-                      </div>
+                      {(() => {
+                        const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
+                        const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
+                        const coreNames = new Set(['kepala sekolah','wakil ketua umum','sekretaris','bendahara','ketua umum','pembina','pengelola'])
+                        const isCoreRole = coreNames.has(name)
+                        const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+                        if (isCoreRole) return null
+                        if (isDivision) {
+                          return (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto Divisi (1–3 gambar)</label>
+                              <div className="mt-1 flex items-center gap-4 flex-wrap">
+                                {imagePreviews.map((src, idx) => (
+                                  <Image key={idx} src={src} alt={`Preview ${idx+1}`} width={96} height={96} className="h-24 w-24 rounded object-cover" />
+                                ))}
+                                <label htmlFor="files-upload" className="relative cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                  <span>{uploadingImage ? 'Mengupload...' : 'Pilih 1–3 Gambar'}</span>
+                                  <input id="files-upload" name="files-upload" type="file" className="sr-only" onChange={handleDivisionFilesSelect} accept="image/*" multiple disabled={uploadingImage} />
+                                </label>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-4">

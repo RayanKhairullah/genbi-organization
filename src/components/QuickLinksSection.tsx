@@ -1,42 +1,42 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Users, FileText, Target, Award, Crown } from 'lucide-react'
+import { ArrowRight, Users, CalendarDays, HelpCircle, Instagram } from 'lucide-react'
 
 const QuickLinksSection: React.FC = () => {
   const quickLinks = [
     {
       href: "/pengurus",
       icon: <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />,
-      title: "Pengurus Forum",
-      desc: "Lihat struktur organisasi Forum GenRe Kota Bengkulu dan profil pengurus",
+      title: "Pengurus",
+      desc: "Lihat struktur organisasi Genbi Kota Bengkulu dan profil pengurus",
       bg: "bg-blue-100 dark:bg-blue-900",
     },
     {
-      href: "/pik-rform",
-      icon: <FileText className="w-8 h-8 text-green-600 dark:text-green-400" />,
-      title: "Form Pendataan PIK-R",
-      desc: "Datakan diri untuk bergabung dengan program PIK-R",
-      bg: "bg-green-100 dark:bg-green-900",
-    },
-    {
-      href: "/duta-genre",
-      icon: <Crown className="w-8 h-8 text-pink-600 dark:text-pink-400" />,
-      title: "Duta Genre",
-      desc: "Informasi dan profil Duta Genre Kota Bengkulu",
-      bg: "bg-pink-100 dark:bg-pink-900",
-    },
-    {
       href: "/kegiatans",
-      icon: <Target className="w-8 h-8 text-purple-600 dark:text-purple-400" />,
+      icon: <CalendarDays className="w-8 h-8 text-purple-600 dark:text-purple-400" />,
       title: "Kegiatan",
-      desc: "Jelajahi kegiatan Forum GenRe Kota Bengkulu",
+      desc: "Jelajahi kegiatan Genbi Kota Bengkulu",
       bg: "bg-purple-100 dark:bg-purple-900",
+    },
+    {
+      href: "#faq",
+      icon: <HelpCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
+      title: "FAQ",
+      desc: "Pertanyaan yang sering ditanyakan seputar Genbi",
+      bg: "bg-amber-100 dark:bg-amber-900",
+    },
+    {
+      href: "https://instagram.com/",
+      icon: <Instagram className="w-8 h-8 text-pink-600 dark:text-pink-400" />,
+      title: "Instagram",
+      desc: "Ikuti update terbaru Genbi di Instagram",
+      bg: "bg-pink-100 dark:bg-pink-900",
     },
   ]
 
   return (
-    <section className="py-16 bg-gray-50 dark:bg-gray-800">
+    <section className="py-16 bg-gray-50 dark:bg-gray-800" id="quicklink">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <div className="text-center mb-12">
           <div className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium mb-6">

@@ -1,3 +1,7 @@
+import type { StaticImageData } from 'next/image'
+// Shared unions
+export type CardRatio = 'landscape' | 'insta_4_5' | 'poster_2_3'
+
 /**
  * Consolidated TypeScript types for GenRe Kota Bengkulu application
  */
@@ -25,17 +29,11 @@ export interface Pengurus {
   struktur_jabatan?: StrukturJabatan
 }
 
+/**
+ * @deprecated PIK-R feature removed. Kept as a minimal stub to prevent import errors.
+ */
 export interface PikRSubmission {
-  id: number
-  nama: string
-  ttl?: string
-  asal_pikr: string
-  alamat_lengkap: string
-  tlpn?: string
-  email?: string
-  jabatan_pikr: string
-  bukti_ss?: string
-  submitted_at: string
+  id: never
 }
 
 export interface FormControl {
@@ -53,26 +51,21 @@ export interface Kegiatan {
   image_url_2?: string
   image_url_3?: string
   created_at?: string
+  card_ratio?: CardRatio
 }
 
+/**
+ * @deprecated Duta Genre feature removed. Kept as a minimal stub to prevent import errors.
+ */
 export interface DutaGenreCategory {
-  id: number
-  key: string
-  title: string
-  order?: number
-  desired_count?: number
+  id: never
 }
 
+/**
+ * @deprecated Duta Genre feature removed. Kept as a minimal stub to prevent import errors.
+ */
 export interface DutaGenreWinner {
-  id: number
-  category_id: number
-  nama: string
-  gender?: 'putra' | 'putri' | 'duo'
-  asal?: string
-  instagram?: string
-  image_url?: string
-  periode: string
-  created_at?: string
+  id: never
 }
 
 // Component Props Types
@@ -117,13 +110,16 @@ export interface NavItem {
 }
 
 // Asset Types
+export type AssetImage = string | StaticImageData
 export interface AssetCollection {
-  formQuestions: string
-  genre_bengkulu_logo: string
-  peach: string
-  specialrainbow: string
-  strawberry: string
-  vanilla: string
+  formQuestions: AssetImage
+  genbi_logo: AssetImage
+  logo_genbi: AssetImage
+  genbi_komisariat: AssetImage
+  peach: AssetImage
+  specialrainbow: AssetImage
+  strawberry: AssetImage
+  vanilla: AssetImage
   drink: string
   drink2: string
   faq_image: string
@@ -140,7 +136,7 @@ export interface ContactFormData {
 }
 
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   data?: T
   error?: string
   message?: string

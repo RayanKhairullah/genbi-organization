@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { assets } from '@/assets/assets'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 interface FAQItem {
   id: number
@@ -15,12 +15,12 @@ const FAQAccordion: React.FC = () => {
   const [openItem, setOpenItem] = useState<number | null>(null)
 
   const faqData: FAQItem[] = [
-    { id: 1, question: "Apa Itu GenRe Bengkulu?", answer: "Generasi Berencana (GenRe) Bengkulu adalah program strategis BKKBN untuk mempersiapkan remaja menjadi generasi yang berencana dalam kehidupan berkeluarga. Program ini fokus pada pemberian edukasi, informasi, dan konseling kepada remaja usia 15-24 tahun." },
-    { id: 2, question: "Kapan GenRe Bengkulu Didirikan?", answer: "GenRe Bengkulu didirikan sebagai bagian dari program nasional BKKBN yang diluncurkan untuk mendukung pembangunan kualitas sumber daya manusia Indonesia, khususnya dalam mempersiapkan generasi muda yang berencana dan bertanggung jawab." },
-    { id: 3, question: "Dimana Lokasi Sekretariat GenRe Bengkulu?", answer: "Sekretariat GenRe Bengkulu berlokasi di Kota Bengkulu, bekerja sama dengan berbagai instansi terkait dan PIK-R yang tersebar di seluruh wilayah Bengkulu untuk memberikan layanan yang lebih dekat dengan masyarakat." },
-    { id: 4, question: "Apa Saja Fungsi GenRe Bengkulu?", answer: "Fungsi GenRe Bengkulu meliputi: (1) Memberikan edukasi tentang kesehatan reproduksi, (2) Menyediakan informasi perencanaan kehidupan berkeluarga, (3) Memberikan konseling dan pendampingan remaja, (4) Mengembangkan keterampilan hidup (life skills), dan (5) Memfasilitasi kegiatan pengembangan diri remaja." },
-    { id: 5, question: "Apa Tugas Dari GenRe Bengkulu?", answer: "Tugas GenRe Bengkulu adalah menyelenggarakan program pembinaan remaja melalui PIK-R, memberikan layanan informasi dan konseling, mengadakan pelatihan dan workshop, serta membangun jaringan kerjasama dengan berbagai pihak untuk mendukung pengembangan remaja yang berkualitas." },
-    { id: 6, question: "Siapa Saja Anggota GenRe Bengkulu?", answer: "Anggota GenRe Bengkulu terdiri dari remaja usia 15-24 tahun yang tergabung dalam PIK-R, konselor sebaya, pengelola PIK-R, dan berbagai stakeholder yang peduli terhadap pengembangan remaja. Keanggotaan terbuka untuk semua remaja yang ingin berkontribusi dalam program GenRe." }
+    { id: 1, question: "Apa Itu Genbi Bengkulu?", answer: "Genbi Kota Bengkulu adalah organisasi kemahasiswaan/komunitas yang berfokus pada pengembangan remaja dan kegiatan sosial kemasyarakatan di Bengkulu. Program berfokus pada edukasi, informasi, serta pengembangan keterampilan bagi generasi muda." },
+    { id: 2, question: "Kapan Genbi Bengkulu Berdiri?", answer: "Genbi Bengkulu hadir sebagai wadah kolaborasi pemuda untuk mendukung peningkatan kualitas sumber daya manusia di daerah, mendorong peran aktif remaja dalam kegiatan positif dan produktif." },
+    { id: 3, question: "Dimana Lokasi Sekretariat Genbi Bengkulu?", answer: "Sekretariat Genbi Bengkulu berlokasi di Kota Bengkulu dan bekerja sama dengan berbagai instansi dan komunitas pemuda untuk menjangkau berbagai wilayah di Provinsi Bengkulu." },
+    { id: 4, question: "Apa Saja Fokus Kegiatan Genbi Bengkulu?", answer: "Fokus kegiatan mencakup: (1) Edukasi dan literasi, (2) Informasi dan pengembangan komunitas, (3) Pendampingan dan mentoring remaja, (4) Pengembangan keterampilan (life skills), dan (5) Fasilitasi kegiatan sosial dan pengembangan diri." },
+    { id: 5, question: "Apa Tugas Dari Genbi Bengkulu?", answer: "Tugas Genbi Bengkulu adalah menyelenggarakan program pembinaan dan pengembangan remaja, menyediakan informasi bermanfaat, mengadakan pelatihan serta workshop, dan membangun kemitraan untuk mendukung kegiatan positif bagi generasi muda." },
+    { id: 6, question: "Siapa Saja Anggota Genbi Bengkulu?", answer: "Anggota Genbi Bengkulu adalah remaja/pemuda yang peduli dan ingin berkontribusi dalam kegiatan sosial dan pengembangan diri. Keanggotaan terbuka bagi yang memiliki semangat berkontribusi bagi masyarakat." }
   ]
 
   const toggleItem = (id: number) => {
@@ -94,7 +94,7 @@ const FAQSection: React.FC = () => {
                 Pertanyaan yang Sering Ditanyakan
               </h2>
               <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                Temukan jawaban untuk pertanyaan umum seputar GenRe Bengkulu dan program-programnya
+                Temukan jawaban untuk pertanyaan umum seputar Genbi Bengkulu dan program-programnya
               </p>
             </div>
 
@@ -104,10 +104,9 @@ const FAQSection: React.FC = () => {
           {/* FAQ Image */}
           <div className="order-1 lg:order-2 flex justify-center">
             <div className="relative group">
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
               <Image
                 src={assets.formQuestions}
-                alt="FAQ GenRe Bengkulu"
+                alt="FAQ Genbi Bengkulu"
                 width={450}
                 height={450}
                 className="relative rounded-3xl group-hover:shadow-3xl transition-all duration-500 group-hover:scale-105"

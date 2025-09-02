@@ -1,14 +1,38 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { type Kegiatan, supabase } from '@/lib/supabase'
+import Image from 'next/image'
 
-function KegiatanCard({ item, onOpen }: { item: Kegiatan; onOpen: (item: Kegiatan) => void }) {
+function ratioClass(ratio?: Kegiatan['card_ratio']): string {
+  switch (ratio) {
+    case 'insta_4_5':
+      return 'aspect-[4/5]'
+    case 'poster_2_3':
+      return 'aspect-[2/3]'
+    case 'landscape':
+    default:
+      return 'aspect-[16/9]'
+  }
+}
+
+function ratioStyle(ratio?: Kegiatan['card_ratio']): CSSProperties {
+  switch (ratio) {
+    case 'insta_4_5':
+      return { aspectRatio: '4 / 5' }
+    case 'poster_2_3':
+      return { aspectRatio: '2 / 3' }
+    case 'landscape':
+    default:
+      return { aspectRatio: '16 / 9' }
+  }
+}
+
+function KegiatanCard({ item }: { item: Kegiatan }) {
   const images = [item.image_url_1, item.image_url_2, item.image_url_3].filter(Boolean) as string[]
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const MAX_CHARS = 150 // Karakter maksimum sebelum dipotong
 
   const hasSlider = images.length > 1
   const current = images[index] || null
@@ -24,26 +48,37 @@ function KegiatanCard({ item, onOpen }: { item: Kegiatan; onOpen: (item: Kegiata
   }, [hasSlider, paused, images.length])
 
   return (
-    <article
-      className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(item)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onOpen(item)
-        }
-      }}
+    <Link
+      href={`/kegiatans?id=${item.id}`}
+      className="group cursor-pointer break-inside-avoid mb-4 md:mb-5 lg:mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 block"
+      aria-label={`Buka detail kegiatan ${item.judul}`}
     >
-      {/* Slider */}
+      {/* Slider with chosen aspect ratio */}
       {current ? (
         <div
-          className="relative group"
+          className={`relative group ${ratioClass(item.card_ratio)} rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm`}
+          style={ratioStyle(item.card_ratio)}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          <img src={current} alt={item.judul} className="w-full h-40 sm:h-56 object-cover" loading="lazy" />
+          <Image
+            src={current}
+            alt={item.judul}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
+            priority={false}
+          />
+          {/* Hover materi overlay */}
+          <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+              <h4 className="text-white font-semibold text-sm sm:text-base leading-tight line-clamp-2">{item.judul}</h4>
+              {item.tanggal && (
+                <p className="text-[11px] text-blue-200 mt-1">{item.tanggal}</p>
+              )}
+            </div>
+          </div>
           {hasSlider && (
             <>
               {/* Controls */}
@@ -68,7 +103,7 @@ function KegiatanCard({ item, onOpen }: { item: Kegiatan; onOpen: (item: Kegiata
                 ›
               </button>
               {/* Dots */}
-              <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
+              <div className="pointer-events-auto absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
                 {images.map((_, i) => (
                   <button
                     key={i}
@@ -87,45 +122,7 @@ function KegiatanCard({ item, onOpen }: { item: Kegiatan; onOpen: (item: Kegiata
           )}
         </div>
       ) : null}
-
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{item.judul}</h3>
-        {item.tanggal && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">{item.tanggal}</p>
-        )}
-        {item.deskripsi && (
-          <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            <div 
-              className="relative"
-              style={{ 
-                overflowWrap: 'break-word', 
-                wordBreak: 'break-word',
-                maxHeight: isExpanded ? 'none' : '4.5em' // ~3 lines
-              }}
-            >
-              <p 
-                className={isExpanded ? 'whitespace-pre-line' : 'line-clamp-3 whitespace-pre-line'}
-              >
-                {item.deskripsi}
-              </p>
-            </div>
-            
-            {/* Tampilkan tombol hanya jika teks lebih panjang dari MAX_CHARS */}
-            {item.deskripsi.length > MAX_CHARS && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsExpanded(!isExpanded)
-                }}
-                className="mt-1 text-blue-500 hover:text-blue-700 text-xs font-medium"
-              >
-                {isExpanded ? 'Tampilkan lebih sedikit' : 'Tampilkan lebih banyak'}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </article>
+    </Link>
   )
 }
 
@@ -133,8 +130,8 @@ export default function KegiatanList() {
   const [items, setItems] = useState<Kegiatan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Kegiatan | null>(null)
-  const [filterDate, setFilterDate] = useState<string>('')
+  // detail ditampilkan pada halaman baru /kegiatans/[id]
+  const [filterTitle, setFilterTitle] = useState<string>('')
 
   const load = async () => {
     try {
@@ -185,15 +182,11 @@ export default function KegiatanList() {
     return <p className="text-center text-sm text-gray-600 dark:text-gray-300">Belum ada kegiatan.</p>
   }
 
-  // Filter by a single date (same day). If tanggal tidak valid, item tetap ditampilkan.
+  // Filter by judul (case-insensitive substring)
   const filteredItems = items.filter((it) => {
-    if (!filterDate) return true
-    if (!it.tanggal) return true
-    const t = new Date(it.tanggal)
-    const f = new Date(filterDate)
-    if (isNaN(t.getTime()) || isNaN(f.getTime())) return true
-    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    return ymd(t) === ymd(f)
+    const q = filterTitle.trim().toLowerCase()
+    if (!q) return true
+    return (it.judul || '').toLowerCase().includes(q)
   })
 
   return (
@@ -201,16 +194,16 @@ export default function KegiatanList() {
       {/* Controls */}
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex flex-col">
-            <label className="text-xs text-gray-600 dark:text-gray-400 mb-1">Tanggal</label>
+          <div className="flex flex-col w-full">
+            <label className="text-xs text-gray-600 dark:text-gray-400 mb-1">Judul</label>
             <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              placeholder="Pilih tanggal"
-              aria-label="Filter tanggal kegiatan"
-              title="Pilih tanggal"
-              className="w-full sm:w-56 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              type="text"
+              value={filterTitle}
+              onChange={(e) => setFilterTitle(e.target.value)}
+              placeholder="Cari judul kegiatan..."
+              aria-label="Filter judul kegiatan"
+              title="Ketik untuk memfilter judul"
+              className="w-full sm:w-72 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             />
           </div>
         </div>
@@ -219,130 +212,12 @@ export default function KegiatanList() {
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+      {/* Masonry (CSS Columns) */}
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-x-4 md:gap-x-5 lg:gap-x-6">
         {filteredItems.map((item) => (
-          <KegiatanCard key={item.id} item={item} onOpen={setSelected} />
+          <KegiatanCard key={item.id} item={item} />
         ))}
       </div>
-
-      {/* Modal Detail */}
-      {selected && (
-        <DetailModal item={selected} onClose={() => setSelected(null)} />)
-      }
     </>
-  )
-}
-
-function DetailModal({ item, onClose }: { item: Kegiatan; onClose: () => void }) {
-  const images = [item.image_url_1, item.image_url_2, item.image_url_3].filter(Boolean) as string[]
-  const [index, setIndex] = useState(0)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const MAX_CHARS = 500 // Karakter maksimum sebelum dipotong
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowLeft') setIndex((i) => (i - 1 + images.length) % images.length)
-      if (e.key === 'ArrowRight') setIndex((i) => (i + 1) % images.length)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, images.length])
-
-  useEffect(() => {
-    if (images.length <= 1) return
-    const id = setInterval(() => setIndex((i) => (i + 1) % images.length), 4000)
-    return () => clearInterval(id)
-  }, [images.length])
-
-  const current = images[index]
-
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3">
-        <div className="w-full max-w-3xl bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden max-h-[90vh]">
-          <div className="relative p-2 md:p-3">
-            {current && (
-              <img src={current} alt={item.judul} className="w-full h-56 sm:h-72 md:h-80 object-cover rounded-lg" loading="lazy" />
-            )}
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
-                  aria-label="Sebelumnya"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={() => setIndex((i) => (i + 1) % images.length)}
-                  aria-label="Berikutnya"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800"
-                >
-                  ›
-                </button>
-                <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
-                  {images.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setIndex(i)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        i === index ? 'w-5 bg-white dark:bg-gray-200' : 'w-2 bg-white/60 dark:bg-gray-500'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-            <button
-              onClick={onClose}
-              aria-label="Tutup"
-              className="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/50 text-white text-sm hover:bg-black/70"
-            >
-              Tutup
-            </button>
-          </div>
-          <div className="p-4 overflow-y-auto">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{item.judul}</h3>
-            {item.tanggal && (
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{item.tanggal}</p>
-            )}
-            {item.deskripsi && (
-              <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                <div 
-                  className="relative"
-                  style={{ 
-                    overflowWrap: 'break-word', 
-                    wordBreak: 'break-word',
-                    maxHeight: isExpanded ? 'none' : '15em' // ~10 lines
-                  }}
-                >
-                  <p 
-                    className={isExpanded ? 'whitespace-pre-line' : 'line-clamp-10 whitespace-pre-line'}
-                  >
-                    {item.deskripsi}
-                  </p>
-                </div>
-                
-                {/* Tampilkan tombol hanya jika teks lebih panjang dari MAX_CHARS */}
-                {item.deskripsi.length > MAX_CHARS && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setIsExpanded(!isExpanded)
-                    }}
-                    className="mt-2 text-blue-500 hover:text-blue-700 text-sm font-medium"
-                  >
-                    {isExpanded ? 'Tampilkan lebih sedikit' : 'Tampilkan lebih banyak'}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }

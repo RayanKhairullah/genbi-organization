@@ -16,9 +16,9 @@ export function Navigation() {
   const navItems: NavItem[] = [
     { href: '/', label: 'Beranda' },
     { href: '/pengurus', label: 'Pengurus' },
-    { href: '/duta-genre', label: 'Duta GenRe' },
-    { href: '/pik-rform', label: 'PIK-R Form' },
     { href: '/kegiatans', label: 'Kegiatan' },
+    { href: '#faq', label: 'FAQ' },
+    { href: '#quicklink', label: 'Akses Cepat' },
   ]
 
   const isActive = (href: string) => {
@@ -34,16 +34,16 @@ export function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-1 group">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-105">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-105">
               <Image
-                src={assets.genre_bengkulu_logo}
-                alt="Logo Forum GenRe Kota Bengkulu"
+                src={assets.genbi_logo}
+                alt="Logo Genbi Kota Bengkulu"
                 className="opacity-90"
                 priority
               />
             </div>
             <span className="font-bold text-xl text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-              Forum GenRe Kota Bengkulu
+              Genbi Smkn 1 Kota Bengkulu
             </span>
           </Link>
 

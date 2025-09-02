@@ -6,25 +6,25 @@ import { assets } from '@/assets/assets'
 export default function SponsorsSection() {
   const sponsors = [
     {
-      src: assets.genre_bengkulu_logo,
+      src: assets.genbi_logo,
       alt: 'Partner 1',
       width: 120,
       height: 60
     },
     {
-      src: assets.genre_bengkulu_logo,
+      src: assets.genbi_logo,
       alt: 'Partner 2',
       width: 120,
       height: 60
     },
     {
-      src: assets.genre_bengkulu_logo,
+      src: assets.genbi_logo,
       alt: 'Partner 3',
       width: 120,
       height: 60
     },
     {
-      src: assets.genre_bengkulu_logo,
+      src: assets.genbi_logo,
       alt: 'Partner 4',
       width: 120,
       height: 60

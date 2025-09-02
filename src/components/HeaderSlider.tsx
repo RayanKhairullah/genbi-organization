@@ -12,7 +12,6 @@ interface HeroSlide {
   title: string
   hashtag: string
   subtitle: string
-  description: string
   primaryButton: {
     text: string
     href: string
@@ -28,34 +27,14 @@ const HeaderSlider: React.FC = () => {
   const heroSlides: HeroSlide[] = [
     {
       id: 1,
-      hashtag: '#ForumGenReBengkulu',
-      title: 'Forum GenRe Kota Bengkulu',
-      subtitle: 'Generasi Berencana untuk Masa Depan',
-      description: 'Program BKKBN untuk kehidupan berkeluarga bagi remaja melalui pemahaman, perencanaan, dan persiapan yang matang.',
+      hashtag: '#GenbiBengkulu',
+      title: 'Genbi Smkn 1 Kota Bengkulu',
+      subtitle: 'Berkolaborasi Membangun Generasi Muda',
       primaryButton: { text: 'Pengurus', href: '/pengurus' },
-      secondaryButton: { text: 'Duta Genre', href: '/duta-genre' },
+      secondaryButton: { text: 'Faq', href: '#faq' },
       icon: (
         <Image
-          src={assets.genre_bengkulu_logo}
-          alt="Ikon Masa Depan Cerah"
-          width={350}
-          height={100}
-          className="w-full h-auto max-w-[280px] md:max-w-full opacity-90"
-          priority
-        />
-      )
-    },
-    {
-      id: 2,
-      hashtag: '#PIK-R',
-      title: 'PIK-R Bengkulu',
-      subtitle: 'Pusat Informasi dan Konseling Remaja',
-      description: 'Wadah kegiatan program GenRe yang dikelola dari, oleh, dan untuk remaja guna memberikan pelayanan informasi dan konseling.',
-      primaryButton: { text: 'Form Pik-R', href: '/pik-rform' },
-      secondaryButton: { text: 'Pelajari Lebih Lanjut', href: '#faq' },
-      icon: (
-        <Image
-          src={assets.genre_bengkulu_logo}
+          src={assets.genbi_logo}
           alt="Ikon Masa Depan Cerah"
           width={350}
           height={100}
@@ -68,13 +47,12 @@ const HeaderSlider: React.FC = () => {
       id: 3,
       hashtag: '#MasaDepanCerah',
       title: 'Masa Depan Cerah',
-      subtitle: 'Bersama Membangun Generasi Berencana',
-      description: 'Bergabunglah dengan komunitas remaja yang peduli masa depan dan siap mempersiapkan kehidupan berkeluarga yang berkualitas.',
-      primaryButton: { text: 'Kegiatan', href: '/pik-rform' },
-      secondaryButton: { text: 'Duta Genre', href: '/duta-genre' },
+      subtitle: 'Bersama Genbi, Kita Berkarya',
+      primaryButton: { text: 'Kegiatan', href: '/kegiatans' },
+      secondaryButton: { text: 'Pengurus', href: '/pengurus' },
       icon: (
         <Image
-          src={assets.genre_bengkulu_logo}
+          src={assets.genbi_komisariat}
           alt="Ikon Masa Depan Cerah"
           width={350}
           height={100}
@@ -95,8 +73,19 @@ const HeaderSlider: React.FC = () => {
   }, [heroSlides.length])
 
   return (
-    <div className="py-8 md:py-4 bg-white dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <div className="relative py-8 md:py-4 overflow-hidden">
+      {/* Background image */}
+      <Image
+        src={assets.genbi_people}
+        alt="Background"
+        fill
+        priority
+        className="object-cover object-center dark:opacity-100 select-none pointer-events-none"
+      />
+      {/* Readability overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/30 via-white/30 to-white/30 dark:from-gray-900/80 dark:via-gray-900/70 dark:to-gray-900/80" />
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
         {/* Gunakan min-h untuk memastikan ruang yang cukup untuk konten */}
         <div className="min-h-[380px] md:min-h-[520px] flex items-center">
           <AnimatePresence mode="wait">
@@ -122,14 +111,11 @@ const HeaderSlider: React.FC = () => {
                   </span>
                 </motion.div>
                 
-                <h1 className="text-2xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 md:mb-3 leading-tight tracking-tight">
+                <h1 className="text-2xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 md:mb-3 leading-tight tracking-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.35),0_0_10px_rgba(0,0,0,0.25)] dark:[text-shadow:none]">
                   {heroSlides[currentSlide].title}
                 </h1>
-                <p className="text-base md:text-xl font-medium text-blue-600 dark:text-blue-400 mb-3 md:mb-4 opacity-90">
+                <p className="text-base md:text-xl font-medium text-white dark:text-blue-400 mb-6 md:mb-8 opacity-95 [text-shadow:0_1px_2px_rgba(0,0,0,0.35),0_0_8px_rgba(0,0,0,0.25)] dark:[text-shadow:none]">
                   {heroSlides[currentSlide].subtitle}
-                </p>
-                <p className="text-sm md:text-lg text-gray-600 dark:text-gray-300 mb-6 md:mb-8 max-w-xl mx-auto md:mx-0 leading-relaxed">
-                  {heroSlides[currentSlide].description}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-2 md:gap-3 justify-center md:justify-start">
@@ -157,7 +143,7 @@ const HeaderSlider: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 layout // Penting untuk animasi layout yang smooth [[4]]
               >
-                <div className="p-3 md:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl max-w-[300px] w-full">
+                <div className="max-w-[300px] w-full">
                   {heroSlides[currentSlide].icon}
                 </div>
               </motion.div>

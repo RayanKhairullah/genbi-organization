@@ -55,7 +55,7 @@ export default function AdminLayout({
             <div className="flex items-center gap-3">
               <AdminLogo size="md" withLink />
               <div className="space-y-0.5">
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Admin Dashboard Genre</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Admin Dashboard Genbi</h1>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
               </div>
             </div>
@@ -116,7 +116,7 @@ function AdminLogin() {
       <div className="max-w-md w-full space-y-6 p-6">
         <div>
           <h2 className="mt-2 text-center text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">Admin Login</h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">Masuk ke dashboard admin PIK-R</p>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">Masuk ke dashboard admin Genbi</p>
         </div>
         
         <form className="mt-6 space-y-4" onSubmit={handleLogin}>

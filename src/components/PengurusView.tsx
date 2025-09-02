@@ -1,9 +1,23 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { type Pengurus } from '@/lib/supabase'
 import Image from 'next/image'
-import { Instagram, Search, X, ClipboardList } from 'lucide-react'
+import { Search, ClipboardList } from 'lucide-react'
+
+// Extended type for division entries that may contain up to 3 image URLs
+type PengurusWithDivisionImages = Pengurus & {
+  image_url_1?: string | null
+  image_url_2?: string | null
+  image_url_3?: string | null
+}
+
+// Type guard to check if a pengurus entry has division image fields
+const hasDivisionImages = (p: Pengurus): p is PengurusWithDivisionImages => {
+  const rec: Record<string, unknown> = p as unknown as Record<string, unknown>
+  return ('image_url_1' in rec) || ('image_url_2' in rec) || ('image_url_3' in rec)
+}
+
 
 interface OrganizationStructureProps {
   pengurus: Pengurus[]
@@ -12,8 +26,7 @@ interface OrganizationStructureProps {
 export function PengurusView({ pengurus }: OrganizationStructureProps) {
   const [query, setQuery] = useState('')
   const [selectedPeriode, setSelectedPeriode] = useState<string | null>(null)
-  const lastActiveElement = useRef<HTMLElement | null>(null)
-  const modalCloseBtnRef = useRef<HTMLButtonElement | null>(null)
+  
 
   // Group pengurus by periode
   const groupedByPeriode = useMemo(() => {
@@ -53,31 +66,61 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
     })
   }, [activePengurus, query])
 
-  // Small groups (BPI, BPH, etc.) — keep original rules
-  const getGroup = (p: Pengurus) => {
-    const ur = p.struktur_jabatan?.urutan ?? 999
-    if (ur <= 4) return 'bpi'
-    // Previously BPH (5–6) is now merged into 'perencanaan'
-    if (ur >= 5 && ur <= 8) return 'perencanaan'
-    if (ur >= 9 && ur <= 10) return 'advokasi'
-    if (ur >= 11 && ur <= 12) return 'data'
-    if (ur >= 13 && ur <= 14) return 'ekonomi'
-    return 'lainnya'
-  }
+  // Role helpers
+  const norm = (s?: string | null) => (s || '').toLowerCase().trim()
+  const fixedRoleNames = useMemo(() => new Set([
+    'kepala sekolah', 'pembina', 'pengelola'
+  ]), [])
+  const bphRoleNames = useMemo(() => new Set([
+    'ketua umum', 'wakil ketua umum', 'wakil ketua', 'sekretaris', 'bendahara'
+  ]), [])
+  const bphMembers = useMemo(() => filteredPengurus.filter(p => bphRoleNames.has(norm(p.struktur_jabatan?.nama_jabatan))), [filteredPengurus, bphRoleNames])
 
-  const groups = useMemo(() => {
-    return filteredPengurus.reduce((acc: Record<string, Pengurus[]>, p) => {
-      const g = getGroup(p)
-      if (!acc[g]) acc[g] = []
-      acc[g].push(p)
-      return acc
-    }, {})
+  // Build hierarchy (1–7) and divisions (8–12)
+  const hirarki = useMemo(() => {
+    const list = filteredPengurus.filter(p => {
+      const ur = p.struktur_jabatan?.urutan ?? 999
+      // Exclude BPH members from row layouts; fixed roles remain
+      const isBph = bphRoleNames.has(norm(p.struktur_jabatan?.nama_jabatan))
+      return ur >= 1 && ur <= 7 && !isBph
+    })
+    return list
+  }, [filteredPengurus, bphRoleNames])
+
+  const row1 = useMemo(() => hirarki.filter(p => p.struktur_jabatan?.urutan === 1), [hirarki])
+  const row2 = useMemo(() => hirarki.filter(p => {
+    const u = p.struktur_jabatan?.urutan ?? 0
+    return u === 2 || u === 3
+  }), [hirarki])
+  const row3 = useMemo(() => hirarki.filter(p => {
+    const u = p.struktur_jabatan?.urutan ?? 0
+    return u >= 4 && u <= 7
+  }), [hirarki])
+
+  // Group divisions (urutan >= 8) by jabatan_id and sort by struktur_jabatan.urutan
+  type DivisionGroup = { jabatanId: number; title: string; urutan: number; members: Pengurus[] }
+  const divisionGroups = useMemo<DivisionGroup[]>(() => {
+    const map = new Map<number, DivisionGroup>()
+    for (const p of filteredPengurus) {
+      const ur = p.struktur_jabatan?.urutan ?? 0
+      if (ur < 8) continue
+      const id = p.jabatan_id ?? -1
+      if (id === -1) continue
+      const key = id
+      const existing = map.get(key)
+      if (!existing) {
+        map.set(key, {
+          jabatanId: key,
+          title: p.struktur_jabatan?.nama_jabatan ?? 'Divisi',
+          urutan: ur,
+          members: [p],
+        })
+      } else {
+        existing.members.push(p)
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.urutan - b.urutan)
   }, [filteredPengurus])
-
-  // Identify BPI Ketua (urutan 1) and others for layout
-  const bpiMembers = useMemo(() => groups['bpi'] ?? [], [groups])
-  const ketuaBPI = useMemo(() => bpiMembers.find(p => p.struktur_jabatan?.urutan === 1) ?? null, [bpiMembers])
-  const otherBPIMembers = useMemo(() => bpiMembers.filter(p => p.id !== (ketuaBPI?.id ?? -1)), [bpiMembers, ketuaBPI])
 
   if (pengurus.length === 0) {
     return (
@@ -96,90 +139,238 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
     )
   }
 
-  const MemberCard = ({ person, isLeadership = false }: { person: Pengurus; isLeadership?: boolean }) => {
-    const roleLabel = person.struktur_jabatan?.nama_jabatan ?? 'Jabatan tidak diketahui'
-    const fallback = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=60'
-    const photo = person.image_url || fallback
+  // MemberCard component removed (unused)
+
+  const TextBadge = ({ label }: { label: string }) => (
+    <span className="inline-flex items-center justify-center rounded-lg px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600">
+      {label}
+    </span>
+  )
+
+  const PersonTile = ({ person }: { person: Pengurus }) => (
+    <div className="rounded-xl bg-white/90 dark:bg-gray-800/80 border border-gray-200/70 dark:border-gray-700/60 p-4 text-center shadow-sm">
+      <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{person.nama}</div>
+      {person.struktur_jabatan?.nama_jabatan && (
+        <div className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 truncate">{person.struktur_jabatan?.nama_jabatan}</div>
+      )}
+    </div>
+  )
+
+  // DivisionThumb component removed (unused)
+
+  // Generic group slider for BPH: use up to 3 member images, overlay lists each role/name
+  const GroupSlider = ({ title, members }: { title: string; members: Pengurus[] }) => {
+    const images = useMemo(() => {
+      return members.slice(0, 3).map((m) => {
+        const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.nama)}&background=random&size=512`
+        return m.image_url || fallback
+      })
+    }, [members])
+    const [index, setIndex] = useState(0)
+    const [paused, setPaused] = useState(false)
+    const hasSlider = images.length > 1
+    const current = images[index] || null
+    useEffect(() => {
+      if (!hasSlider || paused) return
+      const id = setInterval(() => setIndex((i) => (i + 1) % images.length), 4000)
+      return () => clearInterval(id)
+    }, [hasSlider, paused, images.length])
+    const prev = () => setIndex((i) => (i - 1 + images.length) % images.length)
+    const next = () => setIndex((i) => (i + 1) % images.length)
+    const [isDark, setIsDark] = useState(false)
+    const [overlayOpen, setOverlayOpen] = useState(false)
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        const root = document.documentElement
+        setIsDark(root.classList.contains('dark'))
+      }
+    }, [])
     return (
       <div
-        role="button"
-        tabIndex={0}
-        aria-label={`Detail ${person.nama}`}
-        className={`group relative rounded-2xl bg-white/90 dark:bg-gray-800/80 shadow-sm hover:shadow-xl focus:shadow-xl transition-all duration-300 border border-gray-100/80 dark:border-gray-700/70 h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60 flex flex-col`}
+        className="relative group aspect-[16/9] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onClick={() => { if (isDark) setOverlayOpen((v) => !v) }}
       >
-        {/* Photo area: fully visible, no overlays */}
-        <div className="relative w-full h-56 sm:h-64 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-2xl overflow-hidden">
-          <Image
-            src={photo}
-            alt={person.nama}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover object-center transition-transform duration-300 group-hover:scale-[1.03] group-focus:scale-[1.03] group-focus-within:scale-[1.03] active:scale-[1.02]"
-            onError={(e: any) => {
-              try {
-                (e.currentTarget as HTMLImageElement).src = fallback
-              } catch {}
-            }}
-          />
-          {/* subtle top shimmer */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-blue-400/40 to-transparent opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 active:opacity-100 transition-opacity" />
-
-          {/* Hover caption overlay inside image with detailed info */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 active:opacity-100 transition-opacity duration-300">
-            {/* readability gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h4 className="font-semibold text-white text-base leading-tight truncate">{person.nama}</h4>
-                  <p className={`text-[11px] mt-1 ${isLeadership ? 'text-yellow-300' : 'text-blue-200'} truncate`}>{roleLabel}</p>
-                </div>
-                {isLeadership && (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-yellow-500/20 text-yellow-100 px-2.5 py-0.5 text-[10px] font-semibold border border-yellow-300/40 shadow-sm">Inti</span>
-                )}
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-[11px]">
-                {person.asal_pikr ? (
-                  <div className="flex items-center text-gray-200">
-                    <svg className="w-4 h-4 mr-1.5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <span className="truncate">{person.asal_pikr}</span>
-                  </div>
-                ) : <span />}
-
-                {person.instagram && (
-                  <a
-                    href={`https://instagram.com/${person.instagram.replace('@', '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center rounded-full px-2 py-0.5 bg-pink-500/20 text-pink-100 hover:bg-pink-500/30 transition-colors border border-pink-300/30"
-                  >
-                    <Instagram className="w-4 h-4 mr-1.5" />
-                    <span className="truncate">{person.instagram}</span>
-                  </a>
-                )}
-              </div>
+        {current && (
+          <Image src={current} alt={title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
+        )}
+        <div
+          className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
+            (isDark && overlayOpen) ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100 md:group-focus:opacity-100'
+          }`}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+            <h4 className="text-white font-semibold text-sm sm:text-base leading-tight">{title}</h4>
+            <div className="mt-1.5 space-y-0.5 text-[11px] sm:text-xs text-gray-100/90">
+              {members.map((m) => (
+                <p key={m.id} className="truncate">
+                  <span className="text-blue-200 font-medium">{m.struktur_jabatan?.nama_jabatan ?? ''}:</span> {m.nama}
+                </p>
+              ))}
             </div>
           </div>
         </div>
+        {hasSlider && (
+          <>
+            <button onClick={(e) => { e.stopPropagation(); prev() }} aria-label="Sebelumnya" className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">‹</button>
+            <button onClick={(e) => { e.stopPropagation(); next() }} aria-label="Berikutnya" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">›</button>
+            <div className="pointer-events-auto absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
+              {images.map((_, i) => (
+                <button key={i} aria-label={`Ke gambar ${i + 1}`} onClick={(e) => { e.stopPropagation(); setIndex(i) }} className={`h-1.5 rounded-full transition-all ${i === index ? 'w-5 bg-white dark:bg-gray-200' : 'w-2 bg-white/60 dark:bg-gray-500'}`} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
 
-        {/* Caption area: does not cover the image */}
-        <div className="p-4 flex-1 flex flex-col">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <h4 className="flex-1 min-w-0 font-semibold text-gray-900 dark:text-white text-base leading-tight truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 group-focus:text-blue-700 dark:group-focus:text-blue-300 group-focus-within:text-blue-700 dark:group-focus-within:text-blue-300 transition-colors">{person.nama}</h4>
-            {person.jabatan_pengurus && (
-              <span className="shrink-0 max-w-[55%] sm:max-w-[60%] truncate text-[11px] text-gray-700 dark:text-gray-200 bg-gray-50/90 dark:bg-gray-700/80 rounded-full px-3 py-1 border border-gray-200/70 dark:border-gray-600/60">
-                {person.jabatan_pengurus}
-              </span>
+  const DivisionSlider = ({ div }: { div: DivisionGroup }) => {
+    // Support two data shapes:
+    // 1) Legacy: up to 3 rows per division, each with image_url
+    // 2) New: single row per division with image_url_1..3
+    const first = div.members[0]
+    let images: string[] = []
+    if (first && hasDivisionImages(first) && (first.image_url_1 || first.image_url_2 || first.image_url_3)) {
+      images = [first.image_url_1, first.image_url_2, first.image_url_3]
+        .filter((u): u is string => typeof u === 'string' && u.length > 0)
+    } else {
+      images = div.members.slice(0, 3).map((m) => {
+        const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.nama)}&background=random&size=512`
+        return m.image_url || fallback
+      })
+    }
+    // Parse Ketua & Anggota names from formatted `nama` or fallback to members ordering
+    const { ketuaName, anggotaList } = useMemo(() => {
+      const result = { ketuaName: '', anggotaList: [] as string[] }
+      const raw = (first?.nama || '').trim()
+      if (raw) {
+        // Try to parse pattern: "Ketua Divisi : <ketua> Anggota : <anggota...>"
+        const m = raw.match(/ketua\s*(?:divisi)?\s*:\s*(.*?)\s*anggota\s*:\s*(.*)$/i)
+        if (m) {
+          result.ketuaName = m[1].trim()
+          // Split anggota by comma, newline, or multiple spaces
+          const tail = m[2].trim()
+          result.anggotaList = tail
+            .split(/[,\n]+|\s{2,}/)
+            .map(s => s.trim())
+            .filter(Boolean)
+        } else if (div.members.length > 1) {
+          // Legacy multi-rows: assume first is ketua, others anggota
+          result.ketuaName = div.members[0]?.nama || ''
+          result.anggotaList = div.members.slice(1).map(m => m.nama).filter(Boolean)
+        } else {
+          // Fallback: single name only
+          result.ketuaName = raw
+        }
+      }
+      return result
+    }, [first?.nama, div.members])
+    const [index, setIndex] = useState(0)
+    const [paused, setPaused] = useState(false)
+    const hasSlider = images.length > 1
+    const current = images[index] || null
+
+    useEffect(() => {
+      if (!hasSlider || paused) return
+      const id = setInterval(() => setIndex((i) => (i + 1) % images.length), 4000)
+      return () => clearInterval(id)
+    }, [hasSlider, paused, images.length])
+
+    const prev = () => setIndex((i) => (i - 1 + images.length) % images.length)
+    const next = () => setIndex((i) => (i + 1) % images.length)
+
+    const [isDark, setIsDark] = useState(false)
+    const [overlayOpen, setOverlayOpen] = useState(false)
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        const root = document.documentElement
+        setIsDark(root.classList.contains('dark'))
+      }
+    }, [])
+    return (
+      <div
+        className="relative group aspect-[16/9] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onClick={() => {
+          if (isDark) setOverlayOpen((v) => !v)
+        }}
+      >
+        {current && (
+          <Image
+            src={current}
+            alt={div.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
+            unoptimized
+          />
+        )}
+        {/* Hover/click overlay with title and Ketua/Anggota details */}
+        <div
+          className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
+            (isDark && overlayOpen) ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100 md:group-focus:opacity-100'
+          }`}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+            <h4 className="text-white font-semibold text-sm sm:text-base leading-tight line-clamp-2">{div.title}</h4>
+            {(ketuaName || (anggotaList && anggotaList.length)) && (
+              <div className="mt-1.5 space-y-0.5 text-[11px] sm:text-xs text-gray-100/90">
+                {ketuaName && (
+                  <p className="truncate"><span className="text-blue-200 font-medium">Ketua:</span> {ketuaName}</p>
+                )}
+                {anggotaList && anggotaList.length > 0 && (
+                  <p className="line-clamp-2"><span className="text-blue-200 font-medium">Anggota:</span> {anggotaList.join(', ')}</p>
+                )}
+              </div>
             )}
           </div>
-
-          {/* No extra details here; details are shown on image hover */}
         </div>
-        {/* outer hover ring */}
-        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-0 group-hover:ring-2 group-focus:ring-2 group-focus-within:ring-2 ring-blue-200/60 dark:ring-blue-800/40 transition-[ring]" />
+        {hasSlider && (
+          <>
+            {/* Controls */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                prev()
+              }}
+              aria-label="Sebelumnya"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition"
+            >
+              ‹
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                next()
+              }}
+              aria-label="Berikutnya"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition"
+            >
+              ›
+            </button>
+            {/* Dots */}
+            <div className="pointer-events-auto absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  aria-label={`Ke gambar ${i + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIndex(i)
+                  }}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === index ? 'w-5 bg-white dark:bg-gray-200' : 'w-2 bg-white/60 dark:bg-gray-500'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     )
   }
@@ -189,7 +380,7 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
       {/* Header + controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="text-left sm:text-left">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pengurus Forum GenRe Kota Bengkulu</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pengurus Genbi Komisariat SMKN 1 Kota Bengkulu</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Periode <span className="font-semibold text-gray-800 dark:text-gray-100">{activePeriode}</span> · <span className="text-xs text-gray-500">{filteredPengurus.length} anggota</span></p>
           <div className="w-24 h-1 bg-gradient-to-r from-blue-400 to-indigo-500 dark:from-blue-500 dark:to-indigo-600 rounded-full mt-3" />
         </div>
@@ -222,84 +413,78 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
         </div>
       </div>
 
-      {/* BPI */}
-      {bpiMembers.length > 0 && (
+      {/* Hierarchy 1–7 without images (layout rows) */}
+      {(row1.length + row2.length + row3.length) > 0 && (
         <section className="mb-10">
-          <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-            <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
-            BPI
-          </h2>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">🏆 BPI (Badan Pengurus Inti)</h3>
-
-          {/* Ketua at centered top */}
-          {ketuaBPI && (
-            <div className="mb-6 flex justify-center">
-              <div className="w-full sm:w-2/3 md:w-1/2 lg:w-1/3">
-                <MemberCard person={ketuaBPI} isLeadership />
+          {/* Row 1 */}
+          {row1.length > 0 && (
+            <div className="mb-4 flex justify-center">
+              <div className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4">
+                <div className="text-center mb-2"><TextBadge label={row1[0].struktur_jabatan?.nama_jabatan ?? ''} /></div>
+                <PersonTile person={row1[0]} />
               </div>
             </div>
           )}
-
-          {/* Other BPI members below */}
-          {otherBPIMembers.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-              {otherBPIMembers.map((p, idx) => {
-                // Stagger only the very first row under Ketua on large screens:
-                // idx 0 (left) and idx 2 (right) raised slightly; idx 1 (center) normal
-                const stagger = idx === 0 || idx === 2 ? ' lg:-mt-12' : ''
-                return (
-                  <div key={p.id} className={`h-full${stagger}`}>
-                    <MemberCard person={p} isLeadership />
-                  </div>
-                )
-              })}
+          {/* Row 2 */}
+          {row2.length > 0 && (
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+              {row2.map(p => (
+                <div key={p.id} className="flex-1">
+                  <div className="text-center mb-2"><TextBadge label={p.struktur_jabatan?.nama_jabatan ?? ''} /></div>
+                  <PersonTile person={p} />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Row 3 */}
+          {row3.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+              {row3.map(p => (
+                <div key={p.id} className="flex-1">
+                  <div className="text-center mb-2"><TextBadge label={p.struktur_jabatan?.nama_jabatan ?? ''} /></div>
+                  <PersonTile person={p} />
+                </div>
+              ))}
             </div>
           )}
         </section>
       )}
 
-      {/* other groups (BPH removed) */}
-      {['perencanaan', 'advokasi', 'data', 'ekonomi', 'lainnya'].map((gKey) => (
-        groups[gKey] && groups[gKey].length > 0 ? (
-          <section key={gKey} className="mb-8">
-            {gKey === 'perencanaan' && (
-              <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-                <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
-                BPH
-              </h2>
-            )}
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              {gKey === 'perencanaan' && '🎯 Bidang Perencanaan dan Pengembangan'}
-              {gKey === 'advokasi' && '🤝 Bidang Advokasi dan Kerja Sama'}
-              {gKey === 'data' && '📊 Bidang Data dan Informasi'}
-              {gKey === 'ekonomi' && '💡 Bidang Ekonomi Kreatif'}
-              {gKey === 'lainnya' && '👥 Lainnya'}
-            </h3>
-            <div className={`grid grid-cols-1 sm:grid-cols-2 ${['perencanaan','advokasi','data','ekonomi'].includes(gKey) ? 'gap-2 sm:gap-3 md:gap-4' : 'gap-6'} max-w-5xl mx-auto`}>
-              {groups[gKey].map((p, idx) => (
-                ['perencanaan','advokasi','data','ekonomi'].includes(gKey)
-                  ? (
-                      <div
-                        key={p.id}
-                        className={`w-full mx-auto sm:w-[88%] lg:w-[82%] sm:mx-0 ${idx % 2 === 0 ? 'sm:ml-auto' : 'sm:mr-auto'}`}
-                      >
-                        <MemberCard person={p} />
-                      </div>
-                    )
-                  : (
-                      <MemberCard key={p.id} person={p} />
-                    )
-              ))}
+      {/* BPH: grouped into a single card with names shown on hover */}
+      {bphMembers.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+            <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
+            BPH
+          </h2>
+          <div className="flex justify-center">
+            <div className="w-full sm:w-2/3 md:w-1/2 lg:w-1/3">
+              <div className="rounded-2xl bg-white/90 dark:bg-gray-800/80 border border-gray-200/70 dark:border-gray-700/60 p-1 md:p-2 shadow-sm">
+                <GroupSlider title="BPH" members={[...bphMembers].sort((a,b) => (a.struktur_jabatan?.urutan ?? 0) - (b.struktur_jabatan?.urutan ?? 0))} />
+              </div>
             </div>
-          </section>
-        ) : null
-      ))}
+          </div>
+        </section>
+      )}
 
-      {/* other periods hint */}
-      {periodes.length > 1 && (
-        <div className="text-center pt-6 border-t border-white/50">
-          <p className="text-sm text-gray-500">💼 Periode lainnya: {periodes.slice(1).join(', ')}</p>
-        </div>
+      {/* Divisions: show each division as one card with up to 3 member images */}
+      {divisionGroups.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+            <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
+            Divisi
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {divisionGroups.map((div) => (
+              <div key={div.jabatanId}>
+                <div className="text-center mb-1"><TextBadge label={div.title} /></div>
+                <div className="rounded-2xl bg-white/90 dark:bg-gray-800/80 border border-gray-200/70 dark:border-gray-700/60 p-1 md:p-2 shadow-sm">
+                  <DivisionSlider div={div} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

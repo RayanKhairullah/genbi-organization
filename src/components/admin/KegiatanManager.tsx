@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { supabase, type Kegiatan } from '@/lib/supabase'
+import { supabase, MEDIA_BUCKET, type Kegiatan } from '@/lib/supabase'
+import type { CardRatio } from '@/types'
 import { AdminLogo } from '@/components/admin/AdminLogo'
 import { compressImageToWebP } from '@/lib/image-utils'
-import { Plus, Pencil, Trash2, Image as ImageIcon, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Calendar } from 'lucide-react'
+import Image from "next/image"
 
 export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; onUpdate: () => void }) {
   const [items, setItems] = useState<Kegiatan[]>(kegiatan)
@@ -17,6 +19,7 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
     judul: '',
     deskripsi: '',
     tanggal: '',
+    card_ratio: 'landscape' as CardRatio,
     image_url_1: '',
     image_url_2: '',
     image_url_3: '',
@@ -50,6 +53,7 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
         judul: item.judul,
         deskripsi: item.deskripsi || '',
         tanggal: item.tanggal || '',
+        card_ratio: (item.card_ratio ?? 'landscape') as CardRatio,
         image_url_1: item.image_url_1 || '',
         image_url_2: item.image_url_2 || '',
         image_url_3: item.image_url_3 || '',
@@ -93,12 +97,12 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
     const compressed = await compressImageToWebP(file, 0.8)
     const ext = 'webp'
     const fileName = `kegiatan/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { data, error } = await supabase.storage.from('pik-r-bukti').upload(fileName, compressed, {
+    const { data, error } = await supabase.storage.from(MEDIA_BUCKET).upload(fileName, compressed, {
       contentType: 'image/webp',
       upsert: false,
     })
     if (error) throw new Error(error.message)
-    const { data: pub } = supabase.storage.from('pik-r-bukti').getPublicUrl(data.path)
+    const { data: pub } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(data.path)
     return pub.publicUrl
   }
 
@@ -117,6 +121,7 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
         judul: form.judul.trim(),
         deskripsi: form.deskripsi?.trim() || null || undefined,
         tanggal: form.tanggal || null || undefined,
+        card_ratio: form.card_ratio,
         image_url_1: urls[0] || null || undefined,
         image_url_2: urls[1] || null || undefined,
         image_url_3: urls[2] || null || undefined,
@@ -207,7 +212,14 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
                 <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 mb-3">{item.deskripsi}</p>
                 <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory -mx-1 px-1">
                   {[item.image_url_1, item.image_url_2, item.image_url_3].filter(Boolean).map((url, idx) => (
-                    <img key={idx} src={url as string} alt={item.judul} className="h-16 sm:h-20 w-24 sm:w-28 object-cover rounded-md border border-gray-200 dark:border-gray-700 snap-start shrink-0" />
+                    <Image
+                      key={idx}
+                      src={url as string}
+                      alt={item.judul || "Preview gambar"}
+                      width={112}
+                      height={80}
+                      className="h-16 sm:h-20 w-24 sm:w-28 object-cover rounded-md border border-gray-200 dark:border-gray-700 snap-start shrink-0"
+                    />
                   ))}
                 </div>
               </div>
@@ -238,12 +250,31 @@ export function KegiatanManager({ kegiatan, onUpdate }: { kegiatan: Kegiatan[]; 
                 <input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-700" />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Bentuk kartu</label>
+                <select
+                  value={form.card_ratio ?? 'landscape'}
+                  onChange={e => setForm({ ...form, card_ratio: e.target.value as CardRatio })}
+                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                >
+                  <option value="landscape">Landscape (16:9) — kegiatan offline</option>
+                  <option value="insta_4_5">Instagram Portrait (4:5)</option>
+                  <option value="poster_2_3">Poster (2:3)</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gambar (maks 3)</label>
                 <input type="file" accept="image/*" multiple onChange={handleFilesSelect} className="mt-1 w-full text-sm" />
                 {previews.length > 0 && (
                   <div className="flex gap-2 mt-2 overflow-x-auto snap-x snap-mandatory -mx-1 px-1">
                     {previews.map((src, i) => (
-                      <img key={i} src={src} className="h-16 sm:h-20 w-24 sm:w-28 object-cover rounded-md border border-gray-200 dark:border-gray-700 snap-start shrink-0" />
+                      <Image
+                        key={i}
+                        src={src}
+                        alt="Preview upload"
+                        width={112}
+                        height={80}
+                        className="h-16 sm:h-20 w-24 sm:w-28 object-cover rounded-md border border-gray-200 dark:border-gray-700 snap-start shrink-0"
+                      />
                     ))}
                   </div>
                 )}

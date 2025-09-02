@@ -14,23 +14,24 @@ export function Footer() {
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-1  mb-4">
             <Link href="/admin" className="flex items-center space-x-3 group">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                 <Image
-                  src={assets.genre_bengkulu_logo}
-                  alt="Logo Genre Kota Bengkulu"
+                  src={assets.genbi_logo}
+                  alt="Logo Genbi Kota Bengkulu"
                   className="opacity-90"
                   priority
                 />
               </div>
               <span className="font-bold text-xl text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-                Genre Kota Bengkulu
+                Genbi Smkn 1 Kota Bengkulu
               </span>
             </Link>
             </div>
             <p className="mb-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-md">
-              Generasi Berencana untuk masa depan yang lebih baik. Mempersiapkan remaja 
-              menjadi generasi yang berencana dalam kehidupan berkeluarga.
+              Komunitas pemuda Bengkulu untuk masa depan yang lebih baik melalui edukasi, kolaborasi, 
+              dan kegiatan sosial yang berdampak positif.
             </p>
+
             <div className="flex space-x-3">
               <a 
                 href="#" 
@@ -63,7 +64,7 @@ export function Footer() {
               {[
                 { href: '/', label: 'Beranda' },
                 { href: '/pengurus', label: 'Struktur' },
-                { href: '/pik-rform', label: 'Form' },
+                { href: '/kegiatans', label: 'Kegiatan' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link 

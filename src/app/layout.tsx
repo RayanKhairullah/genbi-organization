@@ -18,17 +18,15 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "GenRe Kota Bengkulu",
-    template: "%s | GenRe Kota Bengkulu",
+    default: "Genbi Kota Bengkulu",
+    template: "%s | Genbi Kota Bengkulu",
   },
-  description: "Program GenRe Kota Bengkulu dan PIK-R: informasi, pendaftaran, struktur organisasi, dan dokumentasi kegiatan.",
+  description: "Informasi resmi Genbi Kota Bengkulu: struktur organisasi dan dokumentasi kegiatan.",
   keywords: [
-    "GenRe",
-    "PIK-R",
+    "Genbi",
     "Kota Bengkulu",
     "Remaja",
-    "Generasi Berencana",
-    "Pusat Informasi dan Konseling",
+    "Organisasi",
   ],
   alternates: {
     canonical: "/",
@@ -36,15 +34,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteUrl,
-    title: "GenRe Kota Bengkulu",
-    description: "Informasi resmi GenRe Kota Bengkulu: layanan PIK-R, struktur, pendaftaran, dan kegiatan.",
-    siteName: "GenRe Kota Bengkulu",
+    title: "Genbi Kota Bengkulu",
+    description: "Informasi resmi Genbi Kota Bengkulu: struktur organisasi dan kegiatan.",
+    siteName: "Genbi Kota Bengkulu",
     images: [
       {
-        url: "/GenreBengkuluLogo.svg",
+        url: "/genbilogo.svg",
         width: 1200,
         height: 630,
-        alt: "GenRe Kota Bengkulu",
+        alt: "Genbi Kota Bengkulu",
       },
     ],
     locale: "id_ID",
@@ -53,12 +51,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@genre_bengkulu",
     creator: "@genre_bengkulu",
-    title: "GenRe Kota Bengkulu",
-    description: "Informasi resmi GenRe Kota Bengkulu: layanan PIK-R, struktur, pendaftaran, dan kegiatan.",
+    title: "Genbi Kota Bengkulu",
+    description: "Informasi resmi Genbi Kota Bengkulu: struktur organisasi dan kegiatan.",
     images: [
       {
-        url: "/GenreBengkuluLogo.svg",
-        alt: "GenRe Kota Bengkulu",
+        url: "/genbilogo.svg",
+        alt: "Genbi Kota Bengkulu",
       },
     ],
   },
@@ -74,8 +72,8 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/GenreBengkuluLogo.svg",
-    apple: "/GenreBengkuluLogo.svg",
+    icon: "/genbilogo.svg",
+    apple: "/genbilogo.svg",
   }
 };
 

@@ -5,16 +5,15 @@ import { Footer } from '@/components/Footer'
 import HeaderSlider from '@/components/HeaderSlider'
 import QuickLinksSection from '@/components/QuickLinksSection'
 import FAQSection from '@/components/FAQSection'
-import PIKRSection from '@/components/PIKRSection'
-import SponsorsSection from '@/components/SponsorsSection'
 import KegiatanPreview from '@/components/KegiatanPreview'
+// import SponsorsSection from '@/components/SponsorsSection'
 
 export default function Home() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'GenRe Kota Bengkulu',
+    name: 'Genbi Kota Bengkulu',
     url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
@@ -25,11 +24,11 @@ export default function Home() {
   const orgLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'GenRe Kota Bengkulu',
+    name: 'Genbi Kota Bengkulu',
     url: siteUrl,
-    logo: `${siteUrl}/genre-bengkulu-logo.png`,
+    logo: `${siteUrl}/genbilogo.svg`,
     sameAs: [
-      'https://instagram.com/genre_bengkulu'
+      'https://instagram.com/genbi_kota_bengkulu'
     ]
   }
   return (
@@ -41,17 +40,11 @@ export default function Home() {
       {/* Hero Section */}
       <HeaderSlider />
 
-      {/* Sponsors Section */}
-      <SponsorsSection />
-
       {/* Quick Links Section */}
       <QuickLinksSection />
 
       {/* FAQ Section */}
       <FAQSection />
-
-      {/* PIK-R Section */}
-      <PIKRSection />
 
       {/* Kegiatan Preview Section */}
       <KegiatanPreview />

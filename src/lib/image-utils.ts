@@ -139,13 +139,7 @@ export const validatePhone = (phone: string): boolean => {
   if (!phone || typeof phone !== 'string') return false
   const cleanPhone = phone.replace(/\s|-/g, '')
   return VALIDATION_PATTERNS.PHONE.test(cleanPhone)
-}
-
-/**
- * Formats phone number to standard Indonesian format
- * @param phone - Phone number to format
- * @returns Formatted phone number or original if invalid
- */
+} 
 export const formatPhone = (phone: string): string => {
   if (!validatePhone(phone)) return phone
   

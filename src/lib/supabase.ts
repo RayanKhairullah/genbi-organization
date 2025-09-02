@@ -7,11 +7,8 @@ import { createClient } from '@supabase/supabase-js'
 import type {
   StrukturJabatan,
   Pengurus,
-  PikRSubmission,
   FormControl,
   Kegiatan,
-  DutaGenreCategory,
-  DutaGenreWinner,
   ApiResponse
 } from '@/types'
 
@@ -27,6 +24,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * Supabase client instance
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+/**
+ * Centralized storage bucket name for public media
+ */
+export const MEDIA_BUCKET = 'genbi-media'
 
 /**
  * Database helper functions
@@ -85,34 +87,13 @@ export const db = {
       return { error: error instanceof Error ? error.message : 'Unknown error' }
     }
   },
-
-  /**
-   * Submit PIK-R form
-   */
-  async submitPikRForm(formData: Omit<PikRSubmission, 'id' | 'submitted_at'>): Promise<ApiResponse<PikRSubmission>> {
-    try {
-      const { data, error } = await supabase
-        .from('pik_r_submissions')
-        .insert([formData])
-        .select()
-        .single()
-
-      if (error) throw error
-      return { data }
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Unknown error' }
-    }
-  }
 }
 
 // Re-export types for convenience
 export type {
   StrukturJabatan,
   Pengurus,
-  PikRSubmission,
   FormControl,
-  Kegiatan,
-  DutaGenreCategory,
-  DutaGenreWinner
+  Kegiatan
 }
 

@@ -19,8 +19,8 @@ export function AdminLogo({ size = 'md', withLink = false }: { size?: Size; with
     <span className="transform transition-transform group-hover:scale-105 group-hover:shadow-xl">
       <div className={`${box} rounded-xl flex items-center justify-center shadow-lg`}>
         <Image
-          src={assets.genre_bengkulu_logo}
-          alt="Logo Genre Kota Bengkulu"
+          src={assets.genbi_logo}
+          alt="Logo Genbi Bengkulu"
           className="opacity-90"
           priority
         />
