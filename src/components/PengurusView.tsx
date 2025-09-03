@@ -66,26 +66,14 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
     })
   }, [activePengurus, query])
 
-  // Role helpers
-  const norm = (s?: string | null) => (s || '').toLowerCase().trim()
-  const fixedRoleNames = useMemo(() => new Set([
-    'kepala sekolah', 'pembina', 'pengelola'
-  ]), [])
-  const bphRoleNames = useMemo(() => new Set([
-    'ketua umum', 'wakil ketua umum', 'wakil ketua', 'sekretaris', 'bendahara'
-  ]), [])
-  const bphMembers = useMemo(() => filteredPengurus.filter(p => bphRoleNames.has(norm(p.struktur_jabatan?.nama_jabatan))), [filteredPengurus, bphRoleNames])
-
   // Build hierarchy (1–7) and divisions (8–12)
   const hirarki = useMemo(() => {
     const list = filteredPengurus.filter(p => {
       const ur = p.struktur_jabatan?.urutan ?? 999
-      // Exclude BPH members from row layouts; fixed roles remain
-      const isBph = bphRoleNames.has(norm(p.struktur_jabatan?.nama_jabatan))
-      return ur >= 1 && ur <= 7 && !isBph
+      return ur >= 1 && ur <= 8
     })
     return list
-  }, [filteredPengurus, bphRoleNames])
+  }, [filteredPengurus])
 
   const row1 = useMemo(() => hirarki.filter(p => p.struktur_jabatan?.urutan === 1), [hirarki])
   const row2 = useMemo(() => hirarki.filter(p => {
@@ -94,7 +82,7 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
   }), [hirarki])
   const row3 = useMemo(() => hirarki.filter(p => {
     const u = p.struktur_jabatan?.urutan ?? 0
-    return u >= 4 && u <= 7
+    return u >= 4 && u <= 8
   }), [hirarki])
 
   // Group divisions (urutan >= 8) by jabatan_id and sort by struktur_jabatan.urutan
@@ -157,75 +145,6 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
   )
 
   // DivisionThumb component removed (unused)
-
-  // Generic group slider for BPH: use up to 3 member images, overlay lists each role/name
-  const GroupSlider = ({ title, members }: { title: string; members: Pengurus[] }) => {
-    const images = useMemo(() => {
-      return members.slice(0, 3).map((m) => {
-        const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.nama)}&background=random&size=512`
-        return m.image_url || fallback
-      })
-    }, [members])
-    const [index, setIndex] = useState(0)
-    const [paused, setPaused] = useState(false)
-    const hasSlider = images.length > 1
-    const current = images[index] || null
-    useEffect(() => {
-      if (!hasSlider || paused) return
-      const id = setInterval(() => setIndex((i) => (i + 1) % images.length), 4000)
-      return () => clearInterval(id)
-    }, [hasSlider, paused, images.length])
-    const prev = () => setIndex((i) => (i - 1 + images.length) % images.length)
-    const next = () => setIndex((i) => (i + 1) % images.length)
-    const [isDark, setIsDark] = useState(false)
-    const [overlayOpen, setOverlayOpen] = useState(false)
-    useEffect(() => {
-      if (typeof window !== 'undefined') {
-        const root = document.documentElement
-        setIsDark(root.classList.contains('dark'))
-      }
-    }, [])
-    return (
-      <div
-        className="relative group aspect-[16/9] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onClick={() => { if (isDark) setOverlayOpen((v) => !v) }}
-      >
-        {current && (
-          <Image src={current} alt={title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" unoptimized />
-        )}
-        <div
-          className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
-            (isDark && overlayOpen) ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100 md:group-focus:opacity-100'
-          }`}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
-            <h4 className="text-white font-semibold text-sm sm:text-base leading-tight">{title}</h4>
-            <div className="mt-1.5 space-y-0.5 text-[11px] sm:text-xs text-gray-100/90">
-              {members.map((m) => (
-                <p key={m.id} className="truncate">
-                  <span className="text-blue-200 font-medium">{m.struktur_jabatan?.nama_jabatan ?? ''}:</span> {m.nama}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-        {hasSlider && (
-          <>
-            <button onClick={(e) => { e.stopPropagation(); prev() }} aria-label="Sebelumnya" className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">‹</button>
-            <button onClick={(e) => { e.stopPropagation(); next() }} aria-label="Berikutnya" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">›</button>
-            <div className="pointer-events-auto absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5">
-              {images.map((_, i) => (
-                <button key={i} aria-label={`Ke gambar ${i + 1}`} onClick={(e) => { e.stopPropagation(); setIndex(i) }} className={`h-1.5 rounded-full transition-all ${i === index ? 'w-5 bg-white dark:bg-gray-200' : 'w-2 bg-white/60 dark:bg-gray-500'}`} />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    )
-  }
 
   const DivisionSlider = ({ div }: { div: DivisionGroup }) => {
     // Support two data shapes:
@@ -447,23 +366,6 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
               ))}
             </div>
           )}
-        </section>
-      )}
-
-      {/* BPH: grouped into a single card with names shown on hover */}
-      {bphMembers.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-4 text-center">
-            <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
-            BPH
-          </h2>
-          <div className="flex justify-center">
-            <div className="w-full sm:w-2/3 md:w-1/2 lg:w-1/3">
-              <div className="rounded-2xl bg-white/90 dark:bg-gray-800/80 border border-gray-200/70 dark:border-gray-700/60 p-1 md:p-2 shadow-sm">
-                <GroupSlider title="BPH" members={[...bphMembers].sort((a,b) => (a.struktur_jabatan?.urutan ?? 0) - (b.struktur_jabatan?.urutan ?? 0))} />
-              </div>
-            </div>
-          </div>
         </section>
       )}
 
