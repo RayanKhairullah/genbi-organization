@@ -91,7 +91,7 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
     const map = new Map<number, DivisionGroup>()
     for (const p of filteredPengurus) {
       const ur = p.struktur_jabatan?.urutan ?? 0
-      if (ur < 8) continue
+      if (ur < 9) continue
       const id = p.jabatan_id ?? -1
       if (id === -1) continue
       const key = id
