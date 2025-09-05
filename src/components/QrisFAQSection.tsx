@@ -69,41 +69,77 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 6,
-      question: 'Berapa biaya/fee transaksi QRIS?',
-      answer:
-        'Biaya MDR (Merchant Discount Rate) mengikuti ketentuan BI dan dapat berbeda berdasarkan kategori merchant dan jenis transaksi. (Silakan sesuaikan detail saat finalisasi konten).'
-    },
-    {
-      id: 7,
-      question: 'Bagaimana keamanan transaksi QRIS?',
-      answer:
-        'Transaksi QRIS menggunakan standar keamanan dari penyelenggara jasa pembayaran dan pengawasan oleh Bank Indonesia. Selalu periksa nama merchant dan nominal sebelum konfirmasi.'
-    },
-    {
-      id: 8,
-      question: 'Apakah QRIS bisa untuk cross-border?',
-      answer:
-        'QRIS Cross-Border tersedia bertahap dengan negara mitra yang telah bekerja sama. Ketersediaan bergantung pada kebijakan dan kesiapan mitra.'
-    },
-    {
-      id: 9,
-      question: 'Bagaimana cara mendaftar menjadi merchant QRIS?',
+      question: 'Apa saja tantangan utama yang dihadapi dalam implementasi QRIS secara nasional, terutama di wilayah terpencil atau kurang berkembang secara digital, dan bagaimana strategi pemerintah mengatasinya?',
       answer: (
-        <div>
+        <div className="space-y-2">
+          <p>
+            Tantangan utama implementasi QRIS secara nasional mencakup keterbatasan infrastruktur jaringan internet di wilayah terpencil, rendahnya literasi digital di kalangan masyarakat dan pelaku usaha, serta resistensi terhadap perubahan dari transaksi tunai ke digital.
+          </p>
+          <p>Strategi pemerintah dan BI untuk mengatasi tantangan ini meliputi:</p>
           <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih PJSP (Penyelenggara Jasa Sistem Pembayaran) yang menyediakan QRIS.</li>
-            <li>Lengkapi dokumen usaha sesuai persyaratan PJSP/BI.</li>
-            <li>Lakukan proses verifikasi dan aktivasi merchant.</li>
-            <li>Pasang QRIS di lokasi usaha dan mulai menerima pembayaran.</li>
+            <li>Program edukasi dan literasi digital.</li>
+            <li>Kolaborasi dengan operator seluler untuk memperluas jaringan internet.</li>
+            <li>Program digitalisasi UMKM melalui pendampingan.</li>
+            <li>Penyediaan QRIS offline (tanpa jaringan langsung) untuk transaksi tertentu.</li>
+            <li>Insentif bagi pelaku usaha yang beralih ke pembayaran digital.</li>
           </ol>
         </div>
       )
     },
     {
+      id: 7,
+      question: 'Apa peran QRIS dalam mendukung transaksi lintas negara, khususnya di kawasan ASEAN, dan bagaimana perkembangan implementasi QRIS cross-border saat ini?',
+      answer: (
+        <div>
+          QRIS mendukung transaksi lintas negara melalui inisiatif kerja sama regional yang dilakukan oleh Bank Indonesia dengan bank sentral negara lain, khususnya di kawasan ASEAN. QRIS cross-border memungkinkan wisatawan dari negara-negara mitra untuk melakukan pembayaran di Indonesia menggunakan aplikasi pembayaran dari negara asalnya, dan sebaliknya. Saat ini, BI telah bekerja sama dengan Thailand, Malaysia, dan Singapura untuk mengimplementasikan interoperabilitas sistem pembayaran berbasis QR code. Proyek ini mendukung pariwisata, UMKM, dan meningkatkan efisiensi transaksi lintas batas tanpa perlu menukar mata uang fisik.
+        </div>
+      )
+    },
+    {
+      id: 8,
+      question: 'Bagaimana proses pendaftaran pedagang atau pelaku usaha agar dapat menerima pembayaran menggunakan QRIS, dan apa saja syarat serta dokumen yang diperlukan?',
+      answer: (
+        <div className="space-y-2">
+          <p>
+            Pedagang atau pelaku usaha yang ingin menerima pembayaran melalui QRIS harus mendaftar ke Penyelenggara Jasa Sistem Pembayaran (PJSP) seperti bank atau penyedia dompet digital yang telah bekerja sama dengan Bank Indonesia. Proses pendaftaran umumnya mencakup:
+          </p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pengisian formulir pendaftaran merchant.</li>
+            <li>Verifikasi identitas (KTP) dan informasi usaha.</li>
+            <li>NPWP jika ada.</li>
+            <li>Nomor rekening bank atau e-wallet untuk menerima dana.</li>
+          </ol>
+          <p>
+            Setelah verifikasi selesai, PJSP akan memberikan kode QRIS statis atau dinamis sesuai jenis usaha. Proses ini umumnya dapat dilakukan secara online dan tidak dipungut biaya.
+          </p>
+        </div>
+      )
+    },
+    {
+      id: 9,
+      question: 'Apa langkah-langkah keamanan yang diterapkan oleh Bank Indonesia dan penyedia layanan QRIS untuk melindungi data pengguna dan mencegah kejahatan siber dalam transaksi QRIS?',
+      answer: (
+        <div>
+          Keamanan transaksi QRIS dijaga melalui beberapa lapisan, termasuk:
+          <ol className="list-decimal pl-5 space-y-1 mt-2">
+            <li>Enkripsi data selama pengiriman.</li>
+            <li>Verifikasi dua langkah untuk pengguna aplikasi pembayaran.</li>
+            <li>Penggunaan standar ISO dalam pengembangan QRIS.</li>
+            <li>Audit dan sertifikasi sistem PJSP oleh otoritas yang ditunjuk BI.</li>
+            <li>Penyuluhan keamanan kepada pengguna.</li>
+          </ol>
+          Bank Indonesia juga mewajibkan PJSP untuk memiliki Sistem Manajemen Keamanan Informasi (SMKI) serta menerapkan kebijakan mitigasi risiko kejahatan siber seperti phishing, spoofing, dan QR code palsu.
+        </div>
+      )
+    },
+    {
       id: 10,
-      question: 'Apa yang harus dilakukan jika transaksi QRIS gagal?',
-      answer:
-        'Cek koneksi, saldo/limit, dan status aplikasi. Jika dana terdebet namun merchant belum menerima, simpan bukti transaksi dan hubungi layanan pelanggan PJSP terkait untuk penelusuran (reversal/settlement).'
+      question: 'Bagaimana kontribusi QRIS dalam mempercepat digitalisasi sistem pembayaran nasional dan mendukung transformasi ekonomi digital Indonesia menuju visi "Indonesia Emas 2045"?',
+      answer: (
+        <div>
+          QRIS berkontribusi besar dalam mempercepat digitalisasi sistem pembayaran nasional dengan memfasilitasi transaksi non-tunai yang cepat, efisien, dan inklusif. Dengan adopsi yang luas oleh UMKM dan masyarakat umum, QRIS membantu meningkatkan volume dan nilai transaksi digital yang menjadi bagian dari ekosistem ekonomi digital. QRIS juga memperluas akses layanan keuangan formal bagi masyarakat unbanked dan underbanked. Dalam jangka panjang, QRIS menjadi bagian penting dari infrastruktur digital nasional yang mendukung transformasi ekonomi berbasis teknologi, sejalan dengan visi "Indonesia Emas 2045" yang menargetkan Indonesia sebagai negara maju dengan ekonomi berbasis inovasi dan digitalisasi.
+        </div>
+      )
     }
   ]
 
