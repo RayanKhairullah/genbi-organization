@@ -137,7 +137,7 @@ export default function KegiatanPreview() {
           .from('kegiatan')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(3)
+          .limit(4)
         if (error) throw error
         setItems(data || [])
       } catch (e) {

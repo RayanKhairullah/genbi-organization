@@ -211,6 +211,12 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
 
     const [isDark, setIsDark] = useState(false)
     const [overlayOpen, setOverlayOpen] = useState(false)
+    // Special handling for BPH cards so names don't get hidden
+    const isBphCard = useMemo(() => {
+      const title = (div.title || '').toLowerCase()
+      const sjName = (first?.struktur_jabatan?.nama_jabatan || '').toLowerCase()
+      return title.includes('bph') || title.includes('badan pengurus harian') || sjName === 'bph' || sjName.includes('badan pengurus harian')
+    }, [div.title, first?.struktur_jabatan?.nama_jabatan])
     useEffect(() => {
       if (typeof window !== 'undefined') {
         const root = document.documentElement
@@ -243,15 +249,15 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
           }`}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+          <div className={`absolute inset-x-0 bottom-0 p-3 sm:p-4 ${isBphCard ? 'max-h-[80%] overflow-y-auto pointer-events-auto' : ''}`}>
             <h4 className="text-white font-semibold text-sm sm:text-base leading-tight line-clamp-2">{div.title}</h4>
             {(ketuaName || (anggotaList && anggotaList.length)) && (
               <div className="mt-1.5 space-y-0.5 text-[11px] sm:text-xs text-gray-100/90">
                 {ketuaName && (
-                  <p className="truncate"><span className="text-blue-200 font-medium">Ketua:</span> {ketuaName}</p>
+                  <p className={`${isBphCard ? '' : 'truncate'}`}><span className="text-blue-200 font-medium">Ketua:</span> {ketuaName}</p>
                 )}
                 {anggotaList && anggotaList.length > 0 && (
-                  <p className="line-clamp-2"><span className="text-blue-200 font-medium">Anggota:</span> {anggotaList.join(', ')}</p>
+                  <p className={`${isBphCard ? 'whitespace-normal break-words' : 'line-clamp-2'}`}><span className="text-blue-200 font-medium">Anggota:</span> {anggotaList.join(', ')}</p>
                 )}
               </div>
             )}
