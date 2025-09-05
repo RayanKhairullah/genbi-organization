@@ -7,6 +7,8 @@ import QuickLinksSection from '@/components/QuickLinksSection'
 import FAQSection from '@/components/FAQSection'
 import KegiatanPreview from '@/components/KegiatanPreview'
 // import SponsorsSection from '@/components/SponsorsSection'
+import RupiahFAQSection from '@/components/RupiahFAQSection'
+import QrisFAQSection from '@/components/QrisFAQSection'
 
 export default function Home() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -45,6 +47,12 @@ export default function Home() {
 
       {/* FAQ Section */}
       <FAQSection />
+      
+      {/* Rupiah FAQ Section */}
+      <RupiahFAQSection />
+
+      {/* QRIS FAQ Section */}
+      <QrisFAQSection />
 
       {/* Kegiatan Preview Section */}
       <KegiatanPreview />

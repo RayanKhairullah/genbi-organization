@@ -8,19 +8,61 @@ import { ChevronDown } from 'lucide-react'
 interface FAQItem {
   id: number
   question: string
-  answer: string
+  answer: React.ReactNode
 }
 
 const FAQAccordion: React.FC = () => {
   const [openItem, setOpenItem] = useState<number | null>(null)
 
   const faqData: FAQItem[] = [
-    { id: 1, question: "Apa Itu Genbi Bengkulu?", answer: "Genbi Kota Bengkulu adalah organisasi kemahasiswaan/komunitas yang berfokus pada pengembangan remaja dan kegiatan sosial kemasyarakatan di Bengkulu. Program berfokus pada edukasi, informasi, serta pengembangan keterampilan bagi generasi muda." },
-    { id: 2, question: "Kapan Genbi Bengkulu Berdiri?", answer: "Genbi Bengkulu hadir sebagai wadah kolaborasi pemuda untuk mendukung peningkatan kualitas sumber daya manusia di daerah, mendorong peran aktif remaja dalam kegiatan positif dan produktif." },
-    { id: 3, question: "Dimana Lokasi Sekretariat Genbi Bengkulu?", answer: "Sekretariat Genbi Bengkulu berlokasi di Kota Bengkulu dan bekerja sama dengan berbagai instansi dan komunitas pemuda untuk menjangkau berbagai wilayah di Provinsi Bengkulu." },
-    { id: 4, question: "Apa Saja Fokus Kegiatan Genbi Bengkulu?", answer: "Fokus kegiatan mencakup: (1) Edukasi dan literasi, (2) Informasi dan pengembangan komunitas, (3) Pendampingan dan mentoring remaja, (4) Pengembangan keterampilan (life skills), dan (5) Fasilitasi kegiatan sosial dan pengembangan diri." },
-    { id: 5, question: "Apa Tugas Dari Genbi Bengkulu?", answer: "Tugas Genbi Bengkulu adalah menyelenggarakan program pembinaan dan pengembangan remaja, menyediakan informasi bermanfaat, mengadakan pelatihan serta workshop, dan membangun kemitraan untuk mendukung kegiatan positif bagi generasi muda." },
-    { id: 6, question: "Siapa Saja Anggota Genbi Bengkulu?", answer: "Anggota Genbi Bengkulu adalah remaja/pemuda yang peduli dan ingin berkontribusi dalam kegiatan sosial dan pengembangan diri. Keanggotaan terbuka bagi yang memiliki semangat berkontribusi bagi masyarakat." }
+    { id: 1, question: "Apa itu GenBI?", answer: "GenBI adalah singkatan dari Generasi Baru Indonesia, sebuah komunitas mahasiswa penerima Beasiswa Bank Indonesia (BI) yang bertujuan membangun generasi muda unggul melalui program pengembangan diri dan pengabdian masyarakat." },
+
+    { id: 2, question: "Kapan GenBI didirikan?", answer: "GenBI didirikan pada 11 November 2011." },
+
+    { id: 3, question: "Apa saja divisi yang ada di GenBI?", answer: "Pendidikan, Lingkungan Hidup, Kewirausahaan, Pengabdian Masyarakat, serta Publikasi dan Sosialisasi." },
+
+    { id: 4, question: "Apa saja 3 pilar GenBI?", answer: "Frontliners, Change Agents, dan Future Leaders." },
+
+    { id: 5, question: "Apa Visi dan Misi GenBI?", answer: (
+      <div className="space-y-3">
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white">Visi GenBI</p>
+          <ul className="list-disc pl-5 mt-1 text-gray-700 dark:text-gray-300 space-y-1">
+            <li>
+              <span className="font-medium">Generasi Unggul dan Berkompeten:</span> Menjadikan kaum muda Indonesia sebagai generasi yang unggul dan memiliki kompetensi dalam berbagai bidang keilmuan.
+            </li>
+            <li>
+              <span className="font-medium">Agen Perubahan Positif:</span> Menjadi generasi yang dapat membawa perubahan positif dan menjadi inspirasi bagi bangsa dan negara.
+            </li>
+          </ul>
+        </div>
+        <div className="pt-1">
+          <p className="font-semibold text-gray-900 dark:text-white">Misi GenBI</p>
+          <ul className="list-disc pl-5 mt-1 text-gray-700 dark:text-gray-300 space-y-1">
+            <li>
+              <span className="font-medium">Frontliners Bank Indonesia:</span> Menjadi penyambung informasi dan mengomunikasikan kebijakan Bank Indonesia kepada masyarakat, khususnya sesama mahasiswa.
+            </li>
+            <li>
+              <span className="font-medium">Change Agents:</span> Menjadi agen perubahan yang berkontribusi dalam pembangunan bangsa dan melakukan aksi nyata di masyarakat.
+            </li>
+            <li>
+              <span className="font-medium">Future Leaders:</span> Membentuk diri menjadi calon pemimpin masa depan yang kompetitif dan mampu mengambil peran penting dalam berbagai bidang.
+            </li>
+            <li>
+              <span className="font-medium">Memberi Kontribusi Positif:</span> Berkontribusi melalui kegiatan pemberdayaan masyarakat, seperti pendidikan dan aksi nyata, serta menjadi wadah bagi pengembangan diri anggota.
+            </li>
+          </ul>
+        </div>
+      </div>
+    ) },
+    
+    { id: 6, question: "Apa perbedaan GenBI dengan organisasi kampus pada umumnya?", answer: "Perbedaan utama antara GenBI dan organisasi kampus pada umumnya adalah tujuan dan fokus aktivitasnya: GenBI adalah komunitas penerima Beasiswa Bank Indonesia (BI) yang juga aktif dalam kegiatan pengembangan masyarakat dan sosial, sementara organisasi kampus umum berfokus pada minat, bakat, atau kepentingan akademik mahasiswa di lingkup jurusan, fakultas, atau universitas. GenBI juga memiliki struktur binaan dari Bank Indonesia dan terdiri dari mahasiswa dari berbagai disiplin ilmu dari berbagai universitas, bukan hanya satu universitas. "},
+
+    { id: 7, question: " Apa saja kegiatan rutin yang dilakukan GenBI setiap tahunnya?", answer: "Kegiatan rutin GenBI meliputi pengembangan diri melalui pelatihan kepemimpinan dan softskill serta kegiatan sosialisasi seperti seminar dan workshop. Komunitas ini juga aktif dalam kegiatan sosial dan masyarakat seperti bakti sosial, penggalangan dana, dan aksi lingkungan, serta berbagai program literasi keuangan yang bertujuan mengedukasi masyarakat tentang pengelolaan keuangan dan kebijakan Bank Indonesia." },
+    
+    { id: 8, question: "Apa bentuk dukungan nyata Bank Indonesia terhadap GenBI?", answer: "Dukungan Bank Indonesia (BI) terhadap GenBI nyata melalui pemberian beasiswa dana pendidikan dan biaya hidup bagi mahasiswa, pelatihan pengembangan diri seperti kepemimpinan dan literasi keuangan, penyediaan jaringan profesional dan alumni, serta menjadi wadah bagi mahasiswa untuk berkontribusi melalui kegiatan sosial dan pemberdayaan masyarakat yang sejalan dengan tujuan BI." },
+    
+    { id: 9, question: "Apa manfaat yang dirasakan masyarakat dengan adanya GenBI?", answer: "Masyarakat merasakan manfaat melalui program-program sosial dan edukasi yang digagas GenBI, yang juga menjadi sarana pengembangan diri mahasiswa menjadi agen perubahan dan penghubung kebijakan Bank Indonesia, serta meningkatkan literasi keuangan masyarakat, mendorong ekonomi digital, dan berkontribusi dalam pembangunan daerah melalui kegiatan langsung seperti pendidikan, kesehatan, dan kewirausahaan." }
   ]
 
   const toggleItem = (id: number) => {
@@ -66,9 +108,9 @@ const FAQAccordion: React.FC = () => {
             >
               <div className="overflow-hidden">
                 <div className="px-6 pb-6 pt-2 border-t border-gray-100/50 dark:border-gray-700/50">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
+                  <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
                     {item.answer}
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>

@@ -80,10 +80,18 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
     const u = p.struktur_jabatan?.urutan ?? 0
     return u === 2 || u === 3
   }), [hirarki])
-  const row3 = useMemo(() => hirarki.filter(p => {
-    const u = p.struktur_jabatan?.urutan ?? 0
-    return u >= 4 && u <= 8
-  }), [hirarki])
+  const row3 = useMemo(() => {
+    return filteredPengurus.filter((p) => {
+      const ur = p.struktur_jabatan?.urutan ?? 0
+      const nama = p.struktur_jabatan?.nama_jabatan?.toLowerCase()
+      return ur >= 4 && ur <= 8 && nama !== 'bph'
+    })
+  }, [filteredPengurus])
+  const row4Bph = useMemo(() => {
+    return filteredPengurus.filter(
+      p => p.struktur_jabatan?.nama_jabatan?.toLowerCase() === 'bph'
+    )
+  }, [filteredPengurus])
 
   // Group divisions (urutan >= 8) by jabatan_id and sort by struktur_jabatan.urutan
   type DivisionGroup = { jabatanId: number; title: string; urutan: number; members: Pengurus[] }
@@ -365,6 +373,33 @@ export function PengurusView({ pengurus }: OrganizationStructureProps) {
                 </div>
               ))}
             </div>
+          )}
+          {/* Row 4: BPH */}
+          {row4Bph.length > 0 && (
+            <section className="mb-10 mt-10">
+              <h2 className="text-1xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+                <ClipboardList className="inline-block w-4 h-4 mr-2 align-[-2px]" />
+                Badan Pengurus Harian (BPH)
+              </h2>
+              <div className="flex justify-center">
+                <div className="w-full max-w-md">
+                  {row4Bph.map((p) => (
+                    <div key={p.id}>
+                      <div className="rounded-2xl bg-white/90 dark:bg-gray-800/80 border border-gray-200/70 dark:border-gray-700/60 p-1 md:p-2 shadow-sm">
+                        <DivisionSlider
+                          div={{
+                            jabatanId: p.jabatan_id ?? -1,
+                            title: 'Badan Pengurus Harian',
+                            urutan: p.struktur_jabatan?.urutan ?? 0,
+                            members: [p],
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           )}
         </section>
       )}

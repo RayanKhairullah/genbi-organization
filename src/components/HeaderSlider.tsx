@@ -87,7 +87,7 @@ const HeaderSlider: React.FC = () => {
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
         {/* Gunakan min-h untuk memastikan ruang yang cukup untuk konten */}
-        <div className="min-h-[380px] md:min-h-[520px] flex items-center">
+        <div className="min-h-[440px] md:min-h-[600px] flex items-center">
           <AnimatePresence mode="wait">
             <motion.div
               key={heroSlides[currentSlide].id}
@@ -95,7 +95,7 @@ const HeaderSlider: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.8, ease: 'easeInOut' }}
-              className="w-full flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-6 md:py-10"
+              className="w-full flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-8 md:py-12"
               layout // Penting untuk mencegah layout shift [[4]]
             >
               {/* Text Section */}
@@ -143,7 +143,7 @@ const HeaderSlider: React.FC = () => {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 layout // Penting untuk animasi layout yang smooth [[4]]
               >
-                <div className="max-w-[300px] w-full">
+                <div className="max-w-[340px] w-full">
                   {heroSlides[currentSlide].icon}
                 </div>
               </motion.div>

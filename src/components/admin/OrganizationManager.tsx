@@ -42,6 +42,11 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     // UI-only helpers for division name composition
     ketua_divisi: '',
     anggota_divisi: '',
+    // UI-only helpers for BPH name composition
+    ketua_umum_bph: '',
+    wakil_ketua_umum_bph: '',
+    sekretaris_bph: '',
+    bendahara_bph: '',
   }
 
   const uploadManyImages = async (files: File[]): Promise<string[]> => {
@@ -138,11 +143,30 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
             const m = /anggota\s*:\s*(.*)$/i.exec(item.nama || '')
             return m ? m[1].trim() : ''
           })(),
+          // attempt to prefill BPH helpers from existing nama text if matches pattern
+          ketua_umum_bph: (() => {
+            const m = /ketua\s*umum\s*:\s*(.*?)\s*(?:wakil|sekretaris|bendahara)\s*:/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
+          wakil_ketua_umum_bph: (() => {
+            const m = /wakil\s*ketua\s*umum\s*:\s*(.*?)\s*(?:sekretaris|bendahara)\s*:/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
+          sekretaris_bph: (() => {
+            const m = /sekretaris\s*:\s*(.*?)\s*(?:bendahara)\s*:/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
+          bendahara_bph: (() => {
+            const m = /bendahara\s*:\s*(.*)$/i.exec(item.nama || '')
+            return m ? m[1].trim() : ''
+          })(),
         })
         // Determine if this pengurus is a division entry (uses multi-image fields)
         const sj = strukturJabatan.find(j => j.id === item.jabatan_id)
-        const isDivision = (sj?.nama_jabatan || '').toLowerCase().startsWith('divisi') || (sj?.nama_jabatan || '').toLowerCase().startsWith('devisi')
-        if (isDivision) {
+        const sjName = (sj?.nama_jabatan || '').toLowerCase()
+        const isDivision = sjName.startsWith('divisi') || sjName.startsWith('devisi')
+        const isBph = sjName === 'bph' || sjName.includes('badan pengurus harian')
+        if (isDivision || isBph) {
           // Populate previews from image_url_1..3 if present
           const existing = item as PengurusWithImages
           const urls = [
@@ -183,7 +207,8 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     const selected = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
     const name = (selected?.nama_jabatan || '').toLowerCase()
     const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
-    if (!isDivision) {
+    const isBph = name === 'bph' || name.includes('badan pengurus harian')
+    if (!isDivision && !isBph) {
       // Default/core mode: use single upload, clear multi selections
       setSelectedImageFiles([])
       setImagePreviews([])
@@ -222,28 +247,38 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
         const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
         const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
         const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+        const isBph = name === 'bph' || name.includes('badan pengurus harian')
 
         // For non-division roles, we no longer handle single-image uploads or image_url column
 
-        const { nama, jabatan_id, periode, ketua_divisi, anggota_divisi } = pengurusForm
+        const { nama, jabatan_id, periode, ketua_divisi, anggota_divisi, ketua_umum_bph, wakil_ketua_umum_bph, sekretaris_bph, bendahara_bph } = pengurusForm
         const nameInput = (nama || '').trim()
-        const derivedName = (!isDivision)
+        const derivedName = (!isDivision && !isBph)
           ? (nameInput || (!editingItem ? (selectedJabatan?.nama_jabatan || 'Pengurus').trim() : ''))
           : (() => {
-              // Compose: Ketua Divisi : <ketua> Anggota : <anggota1     anggota2 ...>
-              const ketua = (ketua_divisi || '').trim()
-              // split anggota by newlines or commas, trim, remove empties
-              const anggotaTokens = (anggota_divisi || '')
-                .split(/\n|,/)
-                .map(s => s.trim())
-                .filter(Boolean)
-              const anggotaJoined = anggotaTokens.join('     ')
-              const composed = [
-                ketua ? `Ketua Divisi : ${ketua}` : '',
-                anggotaJoined ? `Anggota : ${anggotaJoined}` : ''
-              ].filter(Boolean).join(' ')
-              // IMPORTANT: For divisions, always use composed text; DO NOT take value from 'Nama Lengkap'
-              return (composed || (selectedJabatan?.nama_jabatan || 'Divisi').trim())
+              if (isDivision) {
+                // Compose: Ketua Divisi : <ketua> Anggota : <anggota1     anggota2 ...>
+                const ketua = (ketua_divisi || '').trim()
+                const anggotaTokens = (anggota_divisi || '')
+                  .split(/\n|,/)
+                  .map(s => s.trim())
+                  .filter(Boolean)
+                const anggotaJoined = anggotaTokens.join('     ')
+                const composed = [
+                  ketua ? `Ketua Divisi : ${ketua}` : '',
+                  anggotaJoined ? `Anggota : ${anggotaJoined}` : ''
+                ].filter(Boolean).join(' ')
+                return (composed || (selectedJabatan?.nama_jabatan || 'Divisi').trim())
+              }
+              // BPH composition
+              const parts = [
+                (ketua_umum_bph || '').trim() ? `Ketua Umum : ${(ketua_umum_bph || '').trim()}` : '',
+                (wakil_ketua_umum_bph || '').trim() ? `Wakil Ketua Umum : ${(wakil_ketua_umum_bph || '').trim()}` : '',
+                (sekretaris_bph || '').trim() ? `Sekretaris : ${(sekretaris_bph || '').trim()}` : '',
+                (bendahara_bph || '').trim() ? `Bendahara : ${(bendahara_bph || '').trim()}` : '',
+              ].filter(Boolean)
+              const composed = parts.join(' ')
+              return (composed || (selectedJabatan?.nama_jabatan || 'BPH').trim())
             })()
         if (!jabatan_id || !(periode || '').trim() || !derivedName) {
           throw new Error('Nama, Jabatan, dan Periode wajib diisi.')
@@ -255,7 +290,7 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
           role_type: pengurusForm.role_type,
         }
 
-        if (isDivision) {
+        if (isDivision || isBph) {
           // Single row with up to 3 images
           if (selectedImageFiles.length === 0 && !editingItem) throw new Error('Pilih minimal 1 gambar untuk divisi')
           if (selectedImageFiles.length > 3) throw new Error('Maksimal 3 gambar untuk divisi')
@@ -503,17 +538,29 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                           const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
                           const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
                           const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
-                          if (isDivision) {
+                          const isBph = name === 'bph' || name.includes('badan pengurus harian')
+                          if (isDivision || isBph) {
                             return (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama (otomatis)</label>
                                 <input
                                   type="text"
-                                  value={`Ketua Divisi : ${pengurusForm.ketua_divisi || ''}${pengurusForm.ketua_divisi && pengurusForm.anggota_divisi ? ' ' : ''}${pengurusForm.anggota_divisi ? `Anggota : ${pengurusForm.anggota_divisi}` : ''}`}
+                                  value={(() => {
+                                    if (isDivision) {
+                                      return `Ketua Divisi : ${pengurusForm.ketua_divisi || ''}${pengurusForm.ketua_divisi && pengurusForm.anggota_divisi ? ' ' : ''}${pengurusForm.anggota_divisi ? `Anggota : ${pengurusForm.anggota_divisi}` : ''}`
+                                    }
+                                    const parts = [
+                                      pengurusForm.ketua_umum_bph ? `Ketua Umum : ${pengurusForm.ketua_umum_bph}` : '',
+                                      pengurusForm.wakil_ketua_umum_bph ? `Wakil Ketua Umum : ${pengurusForm.wakil_ketua_umum_bph}` : '',
+                                      pengurusForm.sekretaris_bph ? `Sekretaris : ${pengurusForm.sekretaris_bph}` : '',
+                                      pengurusForm.bendahara_bph ? `Bendahara : ${pengurusForm.bendahara_bph}` : '',
+                                    ].filter(Boolean)
+                                    return parts.join(' ')
+                                  })()}
                                   readOnly
                                   className="mt-1 w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700/60 dark:border-gray-600 text-gray-600 dark:text-gray-300"
                                 />
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Nama akan disimpan dari isian Ketua Divisi dan Anggota.</p>
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Nama akan disimpan dari isian {isDivision ? 'Ketua Divisi dan Anggota' : 'Ketua Umum, Wakil Ketua Umum, Sekretaris, Bendahara'}.</p>
                               </div>
                             )
                           }
@@ -556,7 +603,8 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                           const coreNames = new Set(['kepala sekolah','wakil ketua umum','sekretaris','bendahara','ketua umum','pembina','pengelola'])
                           const isCoreRole = coreNames.has(name)
                           const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
-                          return (!isCoreRole && !isDivision) ? (
+                          const isBph = name === 'bph' || name.includes('badan pengurus harian')
+                          return (!isCoreRole && !isDivision && !isBph) ? (
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram (opsional)</label>
                               <input type="text" value={pengurusForm.instagram} onChange={e => setPengurusForm({...pengurusForm, instagram: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
@@ -568,7 +616,51 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                           const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
                           const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
                           const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
-                          if (!isDivision) return null
+                          const isBph = name === 'bph' || name.includes('badan pengurus harian')
+                          if (!isDivision) return isBph ? (
+                            <>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ketua Umum</label>
+                                <input
+                                  type="text"
+                                  value={pengurusForm.ketua_umum_bph}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, ketua_umum_bph: e.target.value })}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder="Contoh: Nama Ketua Umum"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Wakil Ketua Umum</label>
+                                <input
+                                  type="text"
+                                  value={pengurusForm.wakil_ketua_umum_bph}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, wakil_ketua_umum_bph: e.target.value })}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder="Contoh: Nama Wakil Ketua Umum"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sekretaris</label>
+                                <input
+                                  type="text"
+                                  value={pengurusForm.sekretaris_bph}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, sekretaris_bph: e.target.value })}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder="Contoh: Nama Sekretaris"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Bendahara</label>
+                                <input
+                                  type="text"
+                                  value={pengurusForm.bendahara_bph}
+                                  onChange={e => setPengurusForm({ ...pengurusForm, bendahara_bph: e.target.value })}
+                                  className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+                                  placeholder="Contoh: Nama Bendahara"
+                                />
+                              </div>
+                            </>
+                          ) : null
                           return (
                             <>
                               <div>
@@ -602,11 +694,12 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                         const coreNames = new Set(['kepala sekolah','wakil ketua umum','sekretaris','bendahara','ketua umum','pembina','pengelola'])
                         const isCoreRole = coreNames.has(name)
                         const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
+                        const isBph = name === 'bph' || name.includes('badan pengurus harian')
                         if (isCoreRole) return null
-                        if (isDivision) {
+                        if (isDivision || isBph) {
                           return (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto Divisi (1–3 gambar)</label>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto {isDivision ? 'Divisi' : 'BPH'} (1–3 gambar)</label>
                               <div className="mt-1 flex items-center gap-4 flex-wrap">
                                 {imagePreviews.map((src, idx) => (
                                   <Image key={idx} src={src} alt={`Preview ${idx+1}`} width={96} height={96} className="h-24 w-24 rounded object-cover" />
