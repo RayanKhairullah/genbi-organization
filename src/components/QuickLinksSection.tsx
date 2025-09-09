@@ -27,7 +27,7 @@ const QuickLinksSection: React.FC = () => {
       bg: "bg-amber-100 dark:bg-amber-900",
     },
     {
-      href: "https://instagram.com/",
+      href: "https://www.instagram.com/genbi_smk1_kotabengkulu",
       icon: <Instagram className="w-8 h-8 text-pink-600 dark:text-pink-400" />,
       title: "Instagram",
       desc: "Ikuti update terbaru Genbi di Instagram",

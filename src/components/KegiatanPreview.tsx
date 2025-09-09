@@ -156,7 +156,7 @@ export default function KegiatanPreview() {
         <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 sm:gap-4">
           <div className="w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kegiatan Terbaru</h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Cuplikan beberapa aktivitas terbaru GenRe/PIK-R.</p>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Cuplikan beberapa aktivitas terbaru GenBI.</p>
           </div>
           <Link
             href="/kegiatans"

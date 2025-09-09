@@ -69,7 +69,7 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 6,
-      question: 'Apa saja tantangan utama yang dihadapi dalam implementasi QRIS secara nasional, terutama di wilayah terpencil atau kurang berkembang secara digital, dan bagaimana strategi pemerintah mengatasinya?',
+      question: 'Apa tantangan penerapan QRIS di daerah terpencil dan bagaimana solusi pemerintah?',
       answer: (
         <div className="space-y-2">
           <p>
@@ -88,7 +88,7 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 7,
-      question: 'Apa peran QRIS dalam mendukung transaksi lintas negara, khususnya di kawasan ASEAN, dan bagaimana perkembangan implementasi QRIS cross-border saat ini?',
+      question: 'Bagaimana peran QRIS dalam transaksi lintas negara (cross-border) di ASEAN?',
       answer: (
         <div>
           QRIS mendukung transaksi lintas negara melalui inisiatif kerja sama regional yang dilakukan oleh Bank Indonesia dengan bank sentral negara lain, khususnya di kawasan ASEAN. QRIS cross-border memungkinkan wisatawan dari negara-negara mitra untuk melakukan pembayaran di Indonesia menggunakan aplikasi pembayaran dari negara asalnya, dan sebaliknya. Saat ini, BI telah bekerja sama dengan Thailand, Malaysia, dan Singapura untuk mengimplementasikan interoperabilitas sistem pembayaran berbasis QR code. Proyek ini mendukung pariwisata, UMKM, dan meningkatkan efisiensi transaksi lintas batas tanpa perlu menukar mata uang fisik.
@@ -97,7 +97,7 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 8,
-      question: 'Bagaimana proses pendaftaran pedagang atau pelaku usaha agar dapat menerima pembayaran menggunakan QRIS, dan apa saja syarat serta dokumen yang diperlukan?',
+      question: 'Bagaimana cara daftar merchant QRIS dan apa saja syaratnya?',
       answer: (
         <div className="space-y-2">
           <p>
@@ -117,7 +117,7 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 9,
-      question: 'Apa langkah-langkah keamanan yang diterapkan oleh Bank Indonesia dan penyedia layanan QRIS untuk melindungi data pengguna dan mencegah kejahatan siber dalam transaksi QRIS?',
+      question: 'Langkah apa yang dilakukan untuk menjaga keamanan data dan mencegah kejahatan siber di QRIS?',
       answer: (
         <div>
           Keamanan transaksi QRIS dijaga melalui beberapa lapisan, termasuk:
@@ -134,7 +134,7 @@ const FAQAccordion: React.FC = () => {
     },
     {
       id: 10,
-      question: 'Bagaimana kontribusi QRIS dalam mempercepat digitalisasi sistem pembayaran nasional dan mendukung transformasi ekonomi digital Indonesia menuju visi "Indonesia Emas 2045"?',
+      question: 'Bagaimana kontribusi QRIS terhadap digitalisasi pembayaran dan visi Indonesia Emas 2045?',
       answer: (
         <div>
           QRIS berkontribusi besar dalam mempercepat digitalisasi sistem pembayaran nasional dengan memfasilitasi transaksi non-tunai yang cepat, efisien, dan inklusif. Dengan adopsi yang luas oleh UMKM dan masyarakat umum, QRIS membantu meningkatkan volume dan nilai transaksi digital yang menjadi bagian dari ekosistem ekonomi digital. QRIS juga memperluas akses layanan keuangan formal bagi masyarakat unbanked dan underbanked. Dalam jangka panjang, QRIS menjadi bagian penting dari infrastruktur digital nasional yang mendukung transformasi ekonomi berbasis teknologi, sejalan dengan visi "Indonesia Emas 2045" yang menargetkan Indonesia sebagai negara maju dengan ekonomi berbasis inovasi dan digitalisasi.
