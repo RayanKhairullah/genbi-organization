@@ -24,6 +24,10 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
   const [selectedImageFiles, setSelectedImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [selectedPeriode, setSelectedPeriode] = useState<string>('all')
+  // Bulk selection state (Pengurus tab)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  // Bulk selection state (Struktur tab)
+  const [selectedStrukturIds, setSelectedStrukturIds] = useState<number[]>([])
 
   const defaultPeriode = new Date().getFullYear().toString()
 
@@ -47,6 +51,94 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     wakil_ketua_umum_bph: '',
     sekretaris_bph: '',
     bendahara_bph: '',
+  }
+
+  // Build export rows for Pengurus based on current filters/selectedPeriode
+  type ExportRow = { Nama: string; Jabatan: string; Periode: string }
+  const buildPengurusExportRows = (): ExportRow[] => {
+    const list = filteredPengurus
+      .filter(p => selectedPeriode === 'all' ? true : p.periode === selectedPeriode)
+      .map(p => ({
+        Nama: p.nama || '',
+        Jabatan: strukturJabatan.find(j => j.id === p.jabatan_id)?.nama_jabatan || '',
+        Periode: p.periode || '',
+      }))
+    return list
+  }
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportPengurusCSV = () => {
+    const rows = buildPengurusExportRows()
+    if (rows.length === 0) {
+      setMessage({ type: 'error', text: 'Tidak ada data untuk diexport.' })
+      return
+    }
+    const headers = Object.keys(rows[0]) as (keyof ExportRow)[]
+    const escape = (v: unknown) => {
+      const s = String(v ?? '')
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+      return s
+    }
+    const csv = [
+      headers.join(','),
+      ...rows.map(r => headers.map(h => escape(r[h])).join(','))
+    ].join('\n')
+    // Add BOM for Excel compatibility
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' })
+    downloadBlob(blob, `pengurus_${selectedPeriode === 'all' ? 'semua-periode' : selectedPeriode}.csv`)
+    setMessage({ type: 'success', text: 'Export CSV berhasil.' })
+  }
+
+  const exportPengurusXLSX = async () => {
+    const rows = buildPengurusExportRows()
+    if (rows.length === 0) {
+      setMessage({ type: 'error', text: 'Tidak ada data untuk diexport.' })
+      return
+    }
+    try {
+      const { Workbook } = await import('exceljs')
+      const workbook = new Workbook()
+      const worksheet = workbook.addWorksheet('Pengurus')
+
+      const headers = Object.keys(rows[0]) as (keyof typeof rows[0])[]
+      worksheet.addRow(headers as string[])
+      // Bold header
+      const headerRow = worksheet.getRow(1)
+      headerRow.font = { bold: true }
+
+      for (const r of rows) {
+        worksheet.addRow(headers.map(h => (r as any)[h] ?? ''))
+      }
+
+      // Auto width (compute from data to avoid calling possibly-undefined APIs)
+      const widths = headers.map((h) => {
+        const headerLen = String(h).length
+        const maxDataLen = rows.reduce((m, r) => Math.max(m, String((r as any)[h] ?? '').length), 0)
+        return Math.min(60, Math.max(10, Math.max(headerLen, maxDataLen) + 2))
+      })
+      worksheet.columns = headers.map((h, i) => ({ key: String(h), width: widths[i] })) as any
+
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const filename = `pengurus_${selectedPeriode === 'all' ? 'semua-periode' : selectedPeriode}.xlsx`
+      downloadBlob(blob, filename)
+      setMessage({ type: 'success', text: 'Export XLSX berhasil.' })
+    } catch (err) {
+      console.error('XLSX export error (exceljs):', err)
+      setMessage({ type: 'error', text: 'Gagal export XLSX. Pastikan paket exceljs terinstal.' })
+    }
   }
 
   const uploadManyImages = async (files: File[]): Promise<string[]> => {
@@ -101,12 +193,76 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
     })
   }, [pengurus, selectedPeriode, selectedRoleType, searchPengurus, strukturJabatan])
 
+  // Clear selection when switching tabs or filters/search change
+  useEffect(() => { setSelectedIds([]) }, [activeTab, selectedPeriode, selectedRoleType, searchPengurus])
+  useEffect(() => { setSelectedStrukturIds([]) }, [activeTab, searchStruktur])
+
+  const allVisibleIds = useMemo(() => filteredPengurus.map(p => p.id), [filteredPengurus])
+  const allSelected = useMemo(() => allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.includes(id)), [allVisibleIds, selectedIds])
+  const toggleSelectAll = () => {
+    if (allSelected) setSelectedIds(ids => ids.filter(id => !allVisibleIds.includes(id)))
+    else setSelectedIds(prev => Array.from(new Set([...prev, ...allVisibleIds])))
+  }
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const handleBulkDeletePengurus = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Hapus ${selectedIds.length} data pengurus terpilih? Tindakan ini tidak dapat dibatalkan.`)) return
+    setLoading(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.from('pengurus').delete().in('id', selectedIds)
+      if (error) throw new Error(error.message)
+      setMessage({ type: 'success', text: `${selectedIds.length} data berhasil dihapus.` })
+      setSelectedIds([])
+      onUpdate()
+    } catch (error) {
+      console.error('Bulk delete error:', error)
+      const msg = error instanceof Error ? error.message : 'Gagal menghapus data terpilih.'
+      setMessage({ type: 'error', text: msg })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredStruktur = useMemo(() => {
     const q = searchStruktur.trim().toLowerCase()
     const list = [...strukturJabatan]
     if (!q) return list
     return list.filter(s => (s.nama_jabatan || '').toLowerCase().includes(q))
   }, [strukturJabatan, searchStruktur])
+
+  // Bulk helpers for Struktur
+  const allVisibleStrukturIds = useMemo(() => filteredStruktur.map(s => s.id), [filteredStruktur])
+  const allStrukturSelected = useMemo(() => allVisibleStrukturIds.length > 0 && allVisibleStrukturIds.every(id => selectedStrukturIds.includes(id)), [allVisibleStrukturIds, selectedStrukturIds])
+  const toggleSelectAllStruktur = () => {
+    if (allStrukturSelected) setSelectedStrukturIds(ids => ids.filter(id => !allVisibleStrukturIds.includes(id)))
+    else setSelectedStrukturIds(prev => Array.from(new Set([...prev, ...allVisibleStrukturIds])))
+  }
+  const toggleSelectOneStruktur = (id: number) => {
+    setSelectedStrukturIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+  const handleBulkDeleteStruktur = async () => {
+    if (selectedStrukturIds.length === 0) return
+    if (!confirm(`Hapus ${selectedStrukturIds.length} data struktur terpilih? Tindakan ini tidak dapat dibatalkan.`)) return
+    setLoading(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.from('struktur_jabatan').delete().in('id', selectedStrukturIds)
+      if (error) throw new Error(error.message)
+      setMessage({ type: 'success', text: `${selectedStrukturIds.length} data struktur berhasil dihapus.` })
+      setSelectedStrukturIds([])
+      onUpdate()
+    } catch (error) {
+      console.error('Bulk delete struktur error:', error)
+      const msg = error instanceof Error ? error.message : 'Gagal menghapus data struktur terpilih.'
+      setMessage({ type: 'error', text: msg })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const resetForms = () => {
     setPengurusForm(initialPengurusForm)
@@ -429,14 +585,48 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
             className="w-full sm:w-64 px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm"
           />
         </div>
-        <button onClick={() => openModal()} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
-          <Plus className="w-5 h-5 mr-2" /> Tambah Pengurus
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={exportPengurusCSV}
+            className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"
+          >
+            Export CSV {selectedPeriode !== 'all' ? `(${selectedPeriode})` : ''}
+          </button>
+          <button
+            type="button"
+            onClick={exportPengurusXLSX}
+            className="px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm"
+          >
+            Export XLSX {selectedPeriode !== 'all' ? `(${selectedPeriode})` : ''}
+          </button>
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleBulkDeletePengurus}
+              disabled={loading}
+              className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-60"
+            >
+              Hapus Terpilih ({selectedIds.length})
+            </button>
+          )}
+          <button onClick={() => openModal()} className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+            <Plus className="w-5 h-5 mr-2" /> Tambah Pengurus
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
+              <th scope="col" className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  aria-label="Pilih semua"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Jabatan</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Periode</th>
@@ -446,6 +636,15 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredPengurus.map(p => (
               <tr key={p.id}>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(p.id)}
+                    onChange={() => toggleSelectOne(p.id)}
+                    aria-label={`Pilih ${p.nama}`}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
@@ -459,7 +658,6 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">{p.nama}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{p.email}</div>
                     </div>
                   </div>
                 </td>
@@ -479,7 +677,7 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
 
   const renderStrukturTab = () => (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-xl">
-       <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 dark:border-gray-700">
         <input
           type="text"
           value={searchStruktur}
@@ -487,14 +685,34 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
           placeholder="Cari nama jabatan..."
           className="w-full sm:w-72 px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-sm"
         />
-        <button onClick={() => openModal()} className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
-          <Plus className="w-5 h-5 mr-2" /> Tambah Jabatan
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {selectedStrukturIds.length > 0 && (
+            <button
+              onClick={handleBulkDeleteStruktur}
+              disabled={loading}
+              className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-60"
+            >
+              Hapus Terpilih ({selectedStrukturIds.length})
+            </button>
+          )}
+          <button onClick={() => openModal()} className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+            <Plus className="w-5 h-5 mr-2" /> Tambah Jabatan
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
+              <th scope="col" className="px-4 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={allStrukturSelected}
+                  onChange={toggleSelectAllStruktur}
+                  aria-label="Pilih semua struktur"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Jabatan</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Urutan</th>
               <th scope="col" className="relative px-6 py-3"><span className="sr-only">Edit</span></th>
@@ -503,6 +721,15 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredStruktur.sort((a, b) => a.urutan - b.urutan).map(s => (
               <tr key={s.id}>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedStrukturIds.includes(s.id)}
+                    onChange={() => toggleSelectOneStruktur(s.id)}
+                    aria-label={`Pilih ${s.nama_jabatan}`}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{s.nama_jabatan}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{s.urutan}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
@@ -596,21 +823,7 @@ export function OrganizationManager({ pengurus, strukturJabatan, onUpdate }: Org
                             <option value="member">Member (Tidak ditampilkan)</option>
                           </select>
                         </div>
-                        {/* Instagram hidden for core roles and divisions */}
-                        {(() => {
-                          const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
-                          const name = (selectedJabatan?.nama_jabatan || '').toLowerCase()
-                          const coreNames = new Set(['kepala sekolah','wakil ketua umum','sekretaris','bendahara','ketua umum','pembina','pengelola'])
-                          const isCoreRole = coreNames.has(name)
-                          const isDivision = name.startsWith('divisi') || name.startsWith('devisi')
-                          const isBph = name === 'bph' || name.includes('badan pengurus harian')
-                          return (!isCoreRole && !isDivision && !isBph) ? (
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram (opsional)</label>
-                              <input type="text" value={pengurusForm.instagram} onChange={e => setPengurusForm({...pengurusForm, instagram: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
-                            </div>
-                          ) : null
-                        })()}
+                        {/* Instagram field removed (tidak digunakan) */}
                         {/* Division-specific name helpers */}
                         {(() => {
                           const selectedJabatan = strukturJabatan.find(j => j.id === parseInt(pengurusForm.jabatan_id || '0'))
